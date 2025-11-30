@@ -16,4 +16,4 @@ python app.py
 ## 데이터
 - `rangeTables/` 폴더의 `M109A6_rangeTable_low_*.csv`, `M109A6_rangeTable_high_*.csv`를 자동으로 불러와 거리에 맞는 장약을 선택합니다.
 - `rangeTables/` 폴더의 `M1129_rangeTable_high_0.csv`, `M1129_rangeTable_high_1.csv`, `M1129_rangeTable_high_2.csv`로 M1129 고각 사격을 지원합니다. (M1129 지원은 기존 데이터와 동일하게 동작합니다.)
-- `rangeTables/` 폴더에 `M119_rangeTable_low_*.csv`, `M119_rangeTable_high_*.csv`를 사용자 제공 데이터로 추가하면 M119 저각/고각 계산을 지원합니다.
+- `rangeTables/` 폴더에 `M119_rangeTable_low_*.csv`, `M119_rangeTable_high_*.csv`를 사용자 제공 데이터로 추가하면 M119 저각/고각 계산을 지원합니다. 파일명을 기준으로 장약 번호를 자동 감지하므로 필요한 데이터만 넣으면 됩니다.

@@ -19,11 +19,10 @@ MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
 SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129", "M119": "M119"}
-SYSTEM_TRAJECTORY_CHARGES = {
-    "M109A6": {"low": [0, 1, 2, 3, 4], "high": [0, 1, 2, 3, 4]},
-    "M1129": {"low": [], "high": [0, 1, 2]},
-    "M119": {"low": [0, 1, 2, 3, 4], "high": [0, 1, 2, 3, 4]},
-}
+
+# 장비별로 고정된 궤적으로만 사격해야 하는 경우를 명시한다.
+# 지정되지 않은 장비는 존재하는 CSV 파일을 기준으로 자동 감지한다.
+SYSTEM_TRAJECTORY_CHARGES = {"M1129": {"low": [], "high": [0, 1, 2]}}
 
 
 class RangeTable:
@@ -141,11 +140,33 @@ class RangeTable:
         return y0 * t0 + y1 * t1 + y2 * t2
 
 
+def available_charges(system: str, trajectory: str):
+    prefix = SYSTEM_FILE_PREFIX.get(system, system)
+    pattern = f"{prefix}_rangeTable_{trajectory}_"
+    charges = []
+    for csv_path in RANGE_TABLE_DIR.glob(f"{pattern}*.csv"):
+        name = csv_path.stem
+        if not name.startswith(pattern):
+            continue
+        suffix = name.replace(pattern, "", 1)
+        if suffix.isdigit():
+            charges.append(int(suffix))
+    return sorted(set(charges))
+
+
 def find_solutions(
-    distance: float, altitude_delta: float, trajectory: str, system: str = "M109A6", limit: int = 3
+    distance: float,
+    altitude_delta: float,
+    trajectory: str,
+    system: str = "M109A6",
+    limit: int = 3,
+    charges: list[int] | None = None,
 ):
     solutions = []
-    charges = SYSTEM_TRAJECTORY_CHARGES.get(system, {}).get(trajectory, [0, 1, 2, 3, 4])
+    if charges is None:
+        charges = available_charges(system, trajectory)
+    if not charges:
+        return solutions
     for charge in charges:
         try:
             table = RangeTable(system, trajectory, charge)
@@ -224,22 +245,37 @@ def calculate_and_display(
     system = system_var.get()
     system_charges = SYSTEM_TRAJECTORY_CHARGES.get(system, {})
 
-    low_charges = system_charges.get("low", [0, 1, 2, 3, 4])
-    high_charges = system_charges.get("high", [0, 1, 2, 3, 4])
+    low_override = system_charges.get("low")
+    high_override = system_charges.get("high")
+
+    low_charges = low_override if low_override is not None else available_charges(system, "low")
+    high_charges = high_override if high_override is not None else available_charges(system, "high")
 
     if low_charges:
-        low_solutions = find_solutions(distance, altitude_delta, "low", system=system, limit=3)
+        low_solutions = find_solutions(
+            distance, altitude_delta, "low", system=system, limit=3, charges=low_charges
+        )
         low_message = None
     else:
         low_solutions = []
-        low_message = "해당 장비는 저각 사격을 지원하지 않습니다"
+        low_message = (
+            "해당 장비는 저각 사격을 지원하지 않습니다"
+            if low_override == []
+            else "저각 데이터가 없습니다. rangeTables를 확인하세요"
+        )
 
     if high_charges:
-        high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
+        high_solutions = find_solutions(
+            distance, altitude_delta, "high", system=system, limit=3, charges=high_charges
+        )
         high_message = None
     else:
         high_solutions = []
-        high_message = "해당 장비는 고각 사격을 지원하지 않습니다"
+        high_message = (
+            "해당 장비는 고각 사격을 지원하지 않습니다"
+            if high_override == []
+            else "고각 데이터가 없습니다. rangeTables를 확인하세요"
+        )
 
     update_solution_table(low_rows, low_status, low_solutions, message=low_message)
     update_solution_table(high_rows, high_status, high_solutions, message=high_message)
