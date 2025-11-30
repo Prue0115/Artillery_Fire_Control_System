@@ -136,12 +136,10 @@ def format_solution_list(title: str, solutions):
     if not solutions:
         return f"{title}: 지원 범위 밖입니다"
 
-    lines = [f"{title}:"]
-    for idx, solution in enumerate(solutions, start=1):
-        lines.append(
-            f"  방법 {idx}: 장약 {solution['charge']} | 포각 {solution['mill']:.1f} mil "
-            f"({solution['base_mill']:.1f} + 고도 보정 {solution['diff100m']:.1f}/100m) | ETA {solution['eta']:.1f}초"
-        )
+    header = f"{'CH':>2} | {'MILL':>10} | {'ETA':>5}"
+    lines = [f"{title}:", header]
+    for solution in solutions:
+        lines.append(f"{solution['charge']:>2} | {solution['mill']:>10.2f} | {solution['eta']:>5.1f}")
     return "\n".join(lines)
 
 
