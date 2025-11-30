@@ -19,6 +19,11 @@ MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
 SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129", "M119": "M119"}
+SYSTEM_TRAJECTORY_CHARGES = {
+    "M109A6": {"low": [0, 1, 2, 3, 4], "high": [0, 1, 2, 3, 4]},
+    "M1129": {"low": [], "high": [0, 1, 2]},
+    "M119": {"low": [0, 1, 2, 3, 4], "high": [0, 1, 2, 3, 4]},
+}
 
 
 class RangeTable:
@@ -140,7 +145,7 @@ def find_solutions(
     distance: float, altitude_delta: float, trajectory: str, system: str = "M109A6", limit: int = 3
 ):
     solutions = []
-    charges = [0, 1, 2, 3, 4]
+    charges = SYSTEM_TRAJECTORY_CHARGES.get(system, {}).get(trajectory, [0, 1, 2, 3, 4])
     for charge in charges:
         try:
             table = RangeTable(system, trajectory, charge)
@@ -217,10 +222,24 @@ def calculate_and_display(
     # (목표가 더 높으면 음수, 더 낮으면 양수)
     altitude_delta = my_alt - target_alt
     system = system_var.get()
-    low_solutions = find_solutions(distance, altitude_delta, "low", system=system, limit=3)
-    high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
-    low_message = None
-    high_message = None
+    system_charges = SYSTEM_TRAJECTORY_CHARGES.get(system, {})
+
+    low_charges = system_charges.get("low", [0, 1, 2, 3, 4])
+    high_charges = system_charges.get("high", [0, 1, 2, 3, 4])
+
+    if low_charges:
+        low_solutions = find_solutions(distance, altitude_delta, "low", system=system, limit=3)
+        low_message = None
+    else:
+        low_solutions = []
+        low_message = "해당 장비는 저각 사격을 지원하지 않습니다"
+
+    if high_charges:
+        high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
+        high_message = None
+    else:
+        high_solutions = []
+        high_message = "해당 장비는 고각 사격을 지원하지 않습니다"
 
     update_solution_table(low_rows, low_status, low_solutions, message=low_message)
     update_solution_table(high_rows, high_status, high_solutions, message=high_message)
