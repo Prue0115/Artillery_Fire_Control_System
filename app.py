@@ -78,17 +78,26 @@ class RangeTable:
         return lower, upper
 
 
-def find_solution(distance: float, altitude_delta: float, trajectory: str):
+def find_solutions(distance: float, altitude_delta: float, trajectory: str, limit: int = 3):
+    solutions = []
     charges = [0, 1, 2, 3, 4]
     for charge in charges:
         table = RangeTable(trajectory, charge)
         if not table.supports_range(distance):
             continue
         try:
-            return table.calculate(distance, altitude_delta)
+            solution = table.calculate(distance, altitude_delta)
         except ValueError:
             continue
-    return None
+        solutions.append(solution)
+        if len(solutions) >= limit:
+            break
+    return solutions
+
+
+def find_solution(distance: float, altitude_delta: float, trajectory: str):
+    solutions = find_solutions(distance, altitude_delta, trajectory, limit=1)
+    return solutions[0] if solutions else None
 
 
 def load_version() -> str:
@@ -123,15 +132,17 @@ def check_updates():
         messagebox.showinfo("업데이트", "\n".join(message))
 
 
-def format_solution(title: str, solution):
-    if solution is None:
+def format_solution_list(title: str, solutions):
+    if not solutions:
         return f"{title}: 지원 범위 밖입니다"
-    return (
-        f"{title}: \n"
-        f"  장약: {solution['charge']}\n"
-        f"  포각: {solution['mill']:.1f} mil ({solution['base_mill']:.1f} + 고도 보정 {solution['diff100m']:.1f}/100m)\n"
-        f"  ETA: {solution['eta']:.1f}초"
-    )
+
+    lines = [f"{title}:"]
+    for idx, solution in enumerate(solutions, start=1):
+        lines.append(
+            f"  방법 {idx}: 장약 {solution['charge']} | 포각 {solution['mill']:.1f} mil "
+            f"({solution['base_mill']:.1f} + 고도 보정 {solution['diff100m']:.1f}/100m) | ETA {solution['eta']:.1f}초"
+        )
+    return "\n".join(lines)
 
 
 def calculate_and_display(result_label, my_altitude_entry, target_altitude_entry, distance_entry):
@@ -144,12 +155,12 @@ def calculate_and_display(result_label, my_altitude_entry, target_altitude_entry
         return
 
     altitude_delta = target_alt - my_alt
-    low_solution = find_solution(distance, altitude_delta, "low")
-    high_solution = find_solution(distance, altitude_delta, "high")
+    low_solutions = find_solutions(distance, altitude_delta, "low", limit=3)
+    high_solutions = find_solutions(distance, altitude_delta, "high", limit=3)
 
     messages = [
-        format_solution("저각", low_solution),
-        format_solution("고각", high_solution),
+        format_solution_list("저각", low_solutions),
+        format_solution_list("고각", high_solutions),
         f"고도 차이: {altitude_delta:+.1f} m",
     ]
     result_label.config(text="\n".join(messages))
