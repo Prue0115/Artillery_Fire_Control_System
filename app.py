@@ -153,7 +153,25 @@ def format_solution_list(title: str, solutions):
     return "\n".join(lines)
 
 
-def calculate_and_display(low_label, high_label, delta_label, my_altitude_entry, target_altitude_entry, distance_entry):
+def update_solution_table(rows, status_label, solutions):
+    if not solutions:
+        status_label.config(text="지원 범위 밖입니다")
+    else:
+        status_label.config(text="")
+
+    for idx, row in enumerate(rows):
+        if idx < len(solutions):
+            solution = solutions[idx]
+            row["ch"].config(text=f"{solution['charge']}", fg=TEXT_COLOR)
+            row["mill"].config(text=f"{solution['mill']:.2f}", fg=TEXT_COLOR)
+            row["eta"].config(text=f"{solution['eta']:.1f}", fg=TEXT_COLOR)
+        else:
+            row["ch"].config(text="—", fg=MUTED_COLOR)
+            row["mill"].config(text="—", fg=MUTED_COLOR)
+            row["eta"].config(text="—", fg=MUTED_COLOR)
+
+
+def calculate_and_display(low_rows, high_rows, low_status, high_status, delta_label, my_altitude_entry, target_altitude_entry, distance_entry):
     try:
         my_alt = float(my_altitude_entry.get())
         target_alt = float(target_altitude_entry.get())
@@ -166,11 +184,8 @@ def calculate_and_display(low_label, high_label, delta_label, my_altitude_entry,
     low_solutions = find_solutions(distance, altitude_delta, "low", limit=3)
     high_solutions = find_solutions(distance, altitude_delta, "high", limit=3)
 
-    low_message = format_solution_list("저각", low_solutions)
-    high_message = format_solution_list("고각", high_solutions)
-
-    low_label.config(text=low_message)
-    high_label.config(text=high_message)
+    update_solution_table(low_rows, low_status, low_solutions)
+    update_solution_table(high_rows, high_status, high_solutions)
     delta_label.config(text=f"고도 차이: {altitude_delta:+.1f} m")
 
 
@@ -186,6 +201,8 @@ def apply_styles(root: tk.Tk):
     style.configure("Body.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=BODY_FONT)
     style.configure("Muted.TLabel", background=APP_BG, foreground=MUTED_COLOR, font=BODY_FONT)
     style.configure("CardBody.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=BODY_FONT, anchor="w")
+    style.configure("TableHeader.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=(BODY_FONT[0], 11, "bold"))
+    style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
 
     style.configure(
         "Primary.TButton",
@@ -229,6 +246,36 @@ def apply_styles(root: tk.Tk):
         foreground=TEXT_COLOR,
         font=(BODY_FONT[0], 12, "bold"),
     )
+
+
+def build_solution_table(parent):
+    table = ttk.Frame(parent, style="Card.TFrame")
+    table.columnconfigure(0, weight=1)
+    table.columnconfigure(1, weight=3)
+    table.columnconfigure(2, weight=2)
+
+    headers = ["CH", "MILL", "ETA"]
+    for col, text in enumerate(headers):
+        ttk.Label(table, text=text, style="TableHeader.TLabel").grid(row=0, column=col, sticky="w", padx=(0, 8))
+
+    rows = []
+    for i in range(3):
+        ch = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=4)
+        mill = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=12)
+        eta = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=6)
+
+        ch.grid(row=i + 1, column=0, sticky="w", pady=3)
+        mill.grid(row=i + 1, column=1, sticky="w", pady=3)
+        eta.grid(row=i + 1, column=2, sticky="w", pady=3)
+
+        rows.append({"ch": ch, "mill": mill, "eta": eta})
+
+    status = ttk.Label(parent, text="계산 결과가 여기에 표시됩니다", style="TableStatus.TLabel")
+    status.grid(row=1, column=0, sticky="w", pady=(8, 0))
+
+    table.grid(row=0, column=0, sticky="nsew")
+    parent.columnconfigure(0, weight=1)
+    return rows, status
 
 
 def build_gui():
@@ -288,14 +335,7 @@ def build_gui():
         button_row,
         text="계산",
         style="Primary.TButton",
-        command=lambda: calculate_and_display(
-            low_label,
-            high_label,
-            delta_label,
-            my_altitude_entry,
-            target_altitude_entry,
-            distance_entry,
-        ),
+        command=lambda: None,
     )
     calculate_button.grid(row=0, column=0, sticky="ew", padx=(0, 6))
 
@@ -315,27 +355,8 @@ def build_gui():
     results_card.columnconfigure(0, weight=1)
     results_card.columnconfigure(1, weight=1)
 
-    low_label = tk.Label(
-        low_frame,
-        text="저각:",
-        justify="left",
-        anchor="nw",
-        bg=CARD_BG,
-        fg=TEXT_COLOR,
-        font=MONO_FONT,
-    )
-    low_label.grid(row=0, column=0, sticky="nw")
-
-    high_label = tk.Label(
-        high_frame,
-        text="고각:",
-        justify="left",
-        anchor="nw",
-        bg=CARD_BG,
-        fg=TEXT_COLOR,
-        font=MONO_FONT,
-    )
-    high_label.grid(row=0, column=0, sticky="nw")
+    low_rows, low_status = build_solution_table(low_frame)
+    high_rows, high_status = build_solution_table(high_frame)
 
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
@@ -343,6 +364,19 @@ def build_gui():
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
+
+    calculate_button.configure(
+        command=lambda: calculate_and_display(
+            low_rows,
+            high_rows,
+            low_status,
+            high_status,
+            delta_label,
+            my_altitude_entry,
+            target_altitude_entry,
+            distance_entry,
+        )
+    )
 
     return root
 
