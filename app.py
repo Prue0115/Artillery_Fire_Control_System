@@ -417,7 +417,7 @@ def build_gui():
     my_altitude_entry = ttk.Entry(input_card)
     my_altitude_entry.grid(row=0, column=1, sticky="ew", pady=4)
 
-    ttk.Label(input_card, text="타격 지점 고도 (m)", style="CardBody.TLabel").grid(
+    ttk.Label(input_card, text="목표물 고도 (m)", style="CardBody.TLabel").grid(
         row=1, column=0, sticky="e", padx=(0, 10), pady=4
     )
     target_altitude_entry = ttk.Entry(input_card)
@@ -446,9 +446,9 @@ def build_gui():
     results_card.columnconfigure(0, weight=1)
     results_card.columnconfigure(1, weight=1)
 
-    low_frame = ttk.Labelframe(results_card, text="저각", style="Card.TLabelframe")
+    low_frame = ttk.Labelframe(results_card, text="LOW", style="Card.TLabelframe")
     low_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-    high_frame = ttk.Labelframe(results_card, text="고각", style="Card.TLabelframe")
+    high_frame = ttk.Labelframe(results_card, text="HIGH", style="Card.TLabelframe")
     high_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
     results_card.rowconfigure(0, weight=1)
     results_card.columnconfigure(0, weight=1)
