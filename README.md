@@ -22,6 +22,10 @@ gcc -o installer_gui installer_gui.c gui_dialogs.c
 
 # 고각 궤적, 장약 3만 대상으로 계산
 ./cli_calculator --system M109A6 --trajectory high --charge 3 --distance 5000
+
+# 새로 추가된 장비 예시 (Siala, RH-70)
+./cli_calculator --system Siala --distance 900
+./cli_calculator --system RH-70 --trajectory low --distance 1000
 ```
 
 ### GUI 인스톨러 사용 흐름 (macOS 권장)
@@ -52,3 +56,10 @@ macOS에서 실행하면 Finder alias를 사용해 바로가기를 만들어 애
 - 파일명: `<SYSTEM>_rangeTable_<trajectory>_<charge>.csv`
 - 컬럼 순서: `range,mill,diff100m,eta`
 - 주어진 `distance`가 표 범위 밖이면 오류 메시지를 표시합니다.
+
+### 지원 장비(예시)
+- M109A6: 고각/저각, 장약 0~4
+- M1129: 고각, 장약 0~2
+- M119: 고각/저각, 장약 0~2
+- Siala: 고각/저각, 장약 0
+- RH-70: 고각/저각, 장약 0
