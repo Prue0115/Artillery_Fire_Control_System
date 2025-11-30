@@ -1,1 +1,1 @@
-# artillery_calculato
+# 포병 계산 프로그램
