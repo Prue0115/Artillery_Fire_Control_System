@@ -210,14 +210,16 @@ def calculate_and_display(
         messagebox.showerror("입력 오류", "숫자만 입력하세요.")
         return
 
-    altitude_delta = target_alt - my_alt
+    # 고도 차이는 사수 고도에서 목표 고도를 뺀 값으로 계산한다
+    # (목표가 더 높으면 음수, 더 낮으면 양수)
+    altitude_delta = my_alt - target_alt
     system = system_var.get()
     low_solutions = find_solutions(distance, altitude_delta, "low", system=system, limit=3)
     high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
 
     update_solution_table(low_rows, low_status, low_solutions)
     update_solution_table(high_rows, high_status, high_solutions)
-    delta_label.config(text=f"고도 차이: {altitude_delta:+.1f} m")
+    delta_label.config(text=f"고도 차이(사수-목표): {altitude_delta:+.1f} m")
 
 
 def apply_styles(root: tk.Tk):
