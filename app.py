@@ -16,12 +16,9 @@ BODY_FONT = ("SF Pro Text", 12)
 MONO_FONT = ("SF Mono", 12)
 
 MIL_PER_DEG = 6400 / 360.0
-M119_MIN_DEG = -5.0
-M119_MAX_DEG = 35.0
-
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
-SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129"}
+SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129", "M119": "M119"}
 
 
 class RangeTable:
@@ -166,13 +163,6 @@ def find_solution(distance: float, altitude_delta: float, trajectory: str, syste
     return solutions[0] if solutions else None
 
 
-def enforce_m119_elevation_limits(solutions):
-    min_mill = M119_MIN_DEG * MIL_PER_DEG
-    max_mill = M119_MAX_DEG * MIL_PER_DEG
-    filtered = [s for s in solutions if min_mill <= s["mill"] <= max_mill]
-    return filtered, len(filtered) != len(solutions)
-
-
 def format_solution_list(title: str, solutions):
     if not solutions:
         return f"{title}: 지원 범위 밖입니다"
@@ -231,23 +221,6 @@ def calculate_and_display(
     high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
     low_message = None
     high_message = None
-
-    if system == "M119":
-        low_solutions, low_clamped = enforce_m119_elevation_limits(low_solutions)
-        high_solutions, high_clamped = enforce_m119_elevation_limits(high_solutions)
-
-        if low_clamped:
-            low_message = (
-                "포각 제한(-5°~35°)을 벗어난 해법이 제외되었습니다"
-                if low_solutions
-                else "포각 제한(-5°~35°)으로 표시할 해법이 없습니다"
-            )
-        if high_clamped:
-            high_message = (
-                "포각 제한(-5°~35°)을 벗어난 해법이 제외되었습니다"
-                if high_solutions
-                else "포각 제한(-5°~35°)으로 표시할 해법이 없습니다"
-            )
 
     update_solution_table(low_rows, low_status, low_solutions, message=low_message)
     update_solution_table(high_rows, high_status, high_solutions, message=high_message)
@@ -360,7 +333,7 @@ def build_gui():
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
-        text="M109A6 · M1129 저각·고각 해법을 깔끔한 표로 확인하세요.",
+        text="M109A6 · M1129 · M119 저각·고각 해법을 깔끔한 표로 확인하세요.",
         style="Muted.TLabel",
     )
     subtitle.grid(row=1, column=0, sticky="w")
@@ -372,7 +345,7 @@ def build_gui():
     system_select = ttk.Combobox(
         system_picker,
         textvariable=system_var,
-        values=["M109A6", "M1129"],
+        values=["M109A6", "M1129", "M119"],
         state="readonly",
         width=8,
         font=BODY_FONT,
