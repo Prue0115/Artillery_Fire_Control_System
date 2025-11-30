@@ -148,6 +148,10 @@ def find_solutions(
     filter_fn=None,
     track_filtered: bool = False,
 ):
+    # M1129 포각 제한(-5°~35°)을 기본으로 적용하여 잘못된 해법을 자동으로 숨긴다
+    if system == "M1129" and filter_fn is None:
+        filter_fn = enforce_m1129_elevation_limits
+
     solutions = []
     filtered_out = False
     charges = [0, 1, 2, 3, 4]
