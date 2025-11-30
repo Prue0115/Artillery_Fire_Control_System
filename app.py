@@ -38,16 +38,18 @@ class RangeTable:
         with self.path.open("r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = []
-            for row in reader:
-                cleaned = {key.strip(): value for key, value in row.items()}
-                rows.append(
-                    {
-                        "range": float(cleaned["range"]),
-                        "mill": float(cleaned["mill"]),
-                        "diff100m": float(cleaned["diff100m"]),
-                        "eta": float(cleaned["eta"]),
-                    }
-                )
+            for line_no, row in enumerate(reader, start=1):
+                # 키 공백 제거 및 None 처리
+                cleaned = { (key.strip() if key else ""): (value.strip() if value is not None else "") for key, value in row.items() }
+                try:
+                    r = float(cleaned.get("range", ""))
+                    mill = float(cleaned.get("mill", ""))
+                    diff100m = float(cleaned.get("diff100m", ""))
+                    eta = float(cleaned.get("eta", ""))
+                except (ValueError, TypeError):
+                    # 숫자 변환 불가(빈값 포함)하면 해당 행은 건너뜀
+                    continue
+                rows.append({"range": r, "mill": mill, "diff100m": diff100m, "eta": eta})
         return rows
 
     def supports_range(self, distance: float) -> bool:
