@@ -1,5 +1,6 @@
 import csv
 import math
+from bisect import bisect_left
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -54,16 +55,9 @@ class RangeTable:
         if not self.supports_range(distance):
             raise ValueError("거리 밖입니다")
 
-        lower_row, upper_row = self._find_bounds(distance)
-        if lower_row["range"] == upper_row["range"]:
-            base_mill = lower_row["mill"]
-            diff100m = lower_row["diff100m"]
-            eta = lower_row["eta"]
-        else:
-            ratio = (distance - lower_row["range"]) / (upper_row["range"] - lower_row["range"])
-            base_mill = lower_row["mill"] + ratio * (upper_row["mill"] - lower_row["mill"])
-            diff100m = lower_row["diff100m"] + ratio * (upper_row["diff100m"] - lower_row["diff100m"])
-            eta = lower_row["eta"] + ratio * (upper_row["eta"] - lower_row["eta"])
+        base_mill = self._interpolate("mill", distance)
+        diff100m = self._interpolate("diff100m", distance)
+        eta = self._interpolate("eta", distance)
 
         mill_adjust = (altitude_delta / 100.0) * diff100m
         final_mill = base_mill + mill_adjust
@@ -88,6 +82,57 @@ class RangeTable:
         if lower is None or upper is None:
             raise ValueError("적절한 범위를 찾을 수 없습니다")
         return lower, upper
+
+    def _neighbor_rows(self, distance: float):
+        ranges = [row["range"] for row in self.rows]
+        idx = bisect_left(ranges, distance)
+
+        neighbors = []
+        if idx > 0:
+            neighbors.append(self.rows[idx - 1])
+        if idx < len(self.rows):
+            neighbors.append(self.rows[idx])
+
+        remaining = []
+        if idx - 2 >= 0:
+            remaining.append(self.rows[idx - 2])
+        if idx + 1 < len(self.rows):
+            remaining.append(self.rows[idx + 1])
+
+        remaining.sort(key=lambda r: abs(r["range"] - distance))
+        for row in remaining:
+            if row not in neighbors:
+                neighbors.append(row)
+            if len(neighbors) >= 3:
+                break
+
+        neighbors.sort(key=lambda r: r["range"])
+        return neighbors
+
+    def _interpolate(self, key: str, distance: float) -> float:
+        neighbors = self._neighbor_rows(distance)
+        if not neighbors:
+            raise ValueError("적절한 범위를 찾을 수 없습니다")
+
+        if len(neighbors) == 1:
+            return neighbors[0][key]
+        if len(neighbors) == 2 or neighbors[0]["range"] == neighbors[1]["range"]:
+            lower, upper = neighbors[0], neighbors[1]
+            if upper["range"] == lower["range"]:
+                return lower[key]
+            ratio = (distance - lower["range"]) / (upper["range"] - lower["range"])
+            return lower[key] + ratio * (upper[key] - lower[key])
+
+        x0, x1, x2 = (row["range"] for row in neighbors[:3])
+        y0, y1, y2 = (row[key] for row in neighbors[:3])
+
+        def basis(x, a, b):
+            return (x - a) / (b - a) if b != a else 0.0
+
+        t0 = basis(distance, x1, x0) * basis(distance, x2, x0)
+        t1 = basis(distance, x0, x1) * basis(distance, x2, x1)
+        t2 = basis(distance, x0, x2) * basis(distance, x1, x2)
+        return y0 * t0 + y1 * t1 + y2 * t2
 
 
 def find_solutions(
