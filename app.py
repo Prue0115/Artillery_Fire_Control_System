@@ -147,6 +147,7 @@ def find_solutions(
     limit: int = 3,
     filter_fn=None,
     track_filtered: bool = False,
+    report_missing: bool = False,
 ):
     # M1129 포각 제한(-5°~35°)을 기본으로 적용하여 잘못된 해법을 자동으로 숨긴다
     if system == "M1129" and filter_fn is None:
@@ -154,12 +155,14 @@ def find_solutions(
 
     solutions = []
     filtered_out = False
+    found_table = False
     charges = [0, 1, 2, 3, 4]
     for charge in charges:
         try:
             table = RangeTable(system, trajectory, charge)
         except FileNotFoundError:
             continue
+        found_table = True
         if not table.supports_range(distance):
             continue
         try:
@@ -177,8 +180,12 @@ def find_solutions(
         if len(solutions) >= limit:
             break
 
+    if track_filtered and report_missing:
+        return solutions, filtered_out, found_table
     if track_filtered:
         return solutions, filtered_out
+    if report_missing:
+        return solutions, found_table
     return solutions
 
 
@@ -254,7 +261,7 @@ def calculate_and_display(
     high_message = None
 
     if system == "M1129":
-        low_solutions, low_clamped = find_solutions(
+        low_solutions, low_clamped, low_found = find_solutions(
             distance,
             altitude_delta,
             "low",
@@ -262,8 +269,9 @@ def calculate_and_display(
             limit=3,
             filter_fn=enforce_m1129_elevation_limits,
             track_filtered=True,
+            report_missing=True,
         )
-        high_solutions, high_clamped = find_solutions(
+        high_solutions, high_clamped, high_found = find_solutions(
             distance,
             altitude_delta,
             "high",
@@ -271,23 +279,37 @@ def calculate_and_display(
             limit=3,
             filter_fn=enforce_m1129_elevation_limits,
             track_filtered=True,
+            report_missing=True,
         )
 
-        if low_clamped:
+        if not low_found:
+            low_message = "M1129 저각 사거리표가 없습니다"
+        elif low_clamped:
             low_message = (
                 "포각 제한(-5°~35°)을 벗어난 해법이 제외되었습니다"
                 if low_solutions
                 else "포각 제한(-5°~35°)으로 표시할 해법이 없습니다"
             )
-        if high_clamped:
+        if not high_found:
+            high_message = "M1129 고각 사거리표가 없습니다"
+        elif high_clamped:
             high_message = (
                 "포각 제한(-5°~35°)을 벗어난 해법이 제외되었습니다"
                 if high_solutions
                 else "포각 제한(-5°~35°)으로 표시할 해법이 없습니다"
             )
     else:
-        low_solutions = find_solutions(distance, altitude_delta, "low", system=system, limit=3)
-        high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
+        low_solutions, low_found = find_solutions(
+            distance, altitude_delta, "low", system=system, limit=3, report_missing=True
+        )
+        high_solutions, high_found = find_solutions(
+            distance, altitude_delta, "high", system=system, limit=3, report_missing=True
+        )
+
+        if not low_found:
+            low_message = f"{system} 저각 사거리표가 없습니다"
+        if not high_found:
+            high_message = f"{system} 고각 사거리표가 없습니다"
 
     update_solution_table(low_rows, low_status, low_solutions, message=low_message)
     update_solution_table(high_rows, high_status, high_solutions, message=high_message)

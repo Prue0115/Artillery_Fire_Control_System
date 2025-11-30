@@ -17,3 +17,4 @@ python app.py
 - `rangeTables/` 폴더의 `M109A6_rangeTable_low_*.csv`, `M109A6_rangeTable_high_*.csv`를 자동으로 불러와 거리에 맞는 장약을 선택합니다.
 - `rangeTables/` 폴더에 추가된 `M1129_rangeTable_high_0.csv`, `M1129_rangeTable_high_1.csv`, `M1129_rangeTable_high_2.csv`로 M1129 고각 사격을 지원합니다.
 - M1129 자주박격포는 포각 제한(-5°~35°)을 적용하여 그 범위를 벗어나는 해법은 표시하지 않습니다.
+- 궤도별 사거리표 파일이 없을 경우(예: M1129 저각 테이블 미제공) UI에 "사거리표가 없습니다" 안내가 표시됩니다.
