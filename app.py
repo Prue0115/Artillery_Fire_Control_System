@@ -390,7 +390,7 @@ def build_gui():
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
-        text="M109A6 · M1129 · M119 저각·고각 해법을 깔끔한 표로 확인하세요.",
+        text="제작자 : Prue",
         style="Muted.TLabel",
     )
     subtitle.grid(row=1, column=0, sticky="w")
