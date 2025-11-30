@@ -15,6 +15,10 @@ TITLE_FONT = ("SF Pro Display", 18, "bold")
 BODY_FONT = ("SF Pro Text", 12)
 MONO_FONT = ("SF Mono", 12)
 
+MIL_PER_DEG = 6400 / 360.0
+M119_MIN_DEG = -5.0
+M119_MAX_DEG = 35.0
+
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
 SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129"}
@@ -162,6 +166,13 @@ def find_solution(distance: float, altitude_delta: float, trajectory: str, syste
     return solutions[0] if solutions else None
 
 
+def enforce_m119_elevation_limits(solutions):
+    min_mill = M119_MIN_DEG * MIL_PER_DEG
+    max_mill = M119_MAX_DEG * MIL_PER_DEG
+    filtered = [s for s in solutions if min_mill <= s["mill"] <= max_mill]
+    return filtered, len(filtered) != len(solutions)
+
+
 def format_solution_list(title: str, solutions):
     if not solutions:
         return f"{title}: 지원 범위 밖입니다"
@@ -173,8 +184,10 @@ def format_solution_list(title: str, solutions):
     return "\n".join(lines)
 
 
-def update_solution_table(rows, status_label, solutions):
-    if not solutions:
+def update_solution_table(rows, status_label, solutions, message: str | None = None):
+    if message:
+        status_label.config(text=message)
+    elif not solutions:
         status_label.config(text="지원 범위 밖입니다")
     else:
         status_label.config(text="")
@@ -216,9 +229,28 @@ def calculate_and_display(
     system = system_var.get()
     low_solutions = find_solutions(distance, altitude_delta, "low", system=system, limit=3)
     high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
+    low_message = None
+    high_message = None
 
-    update_solution_table(low_rows, low_status, low_solutions)
-    update_solution_table(high_rows, high_status, high_solutions)
+    if system == "M119":
+        low_solutions, low_clamped = enforce_m119_elevation_limits(low_solutions)
+        high_solutions, high_clamped = enforce_m119_elevation_limits(high_solutions)
+
+        if low_clamped:
+            low_message = (
+                "포각 제한(-5°~35°)을 벗어난 해법이 제외되었습니다"
+                if low_solutions
+                else "포각 제한(-5°~35°)으로 표시할 해법이 없습니다"
+            )
+        if high_clamped:
+            high_message = (
+                "포각 제한(-5°~35°)을 벗어난 해법이 제외되었습니다"
+                if high_solutions
+                else "포각 제한(-5°~35°)으로 표시할 해법이 없습니다"
+            )
+
+    update_solution_table(low_rows, low_status, low_solutions, message=low_message)
+    update_solution_table(high_rows, high_status, high_solutions, message=high_message)
     delta_label.config(text=f"고도 차이(사수-목표): {altitude_delta:+.1f} m")
 
 
