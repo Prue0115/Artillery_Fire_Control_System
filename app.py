@@ -145,7 +145,7 @@ def format_solution_list(title: str, solutions):
     return "\n".join(lines)
 
 
-def calculate_and_display(result_label, my_altitude_entry, target_altitude_entry, distance_entry):
+def calculate_and_display(low_label, high_label, delta_label, my_altitude_entry, target_altitude_entry, distance_entry):
     try:
         my_alt = float(my_altitude_entry.get())
         target_alt = float(target_altitude_entry.get())
@@ -158,12 +158,12 @@ def calculate_and_display(result_label, my_altitude_entry, target_altitude_entry
     low_solutions = find_solutions(distance, altitude_delta, "low", limit=3)
     high_solutions = find_solutions(distance, altitude_delta, "high", limit=3)
 
-    messages = [
-        format_solution_list("저각", low_solutions),
-        format_solution_list("고각", high_solutions),
-        f"고도 차이: {altitude_delta:+.1f} m",
-    ]
-    result_label.config(text="\n".join(messages))
+    low_message = format_solution_list("저각", low_solutions)
+    high_message = format_solution_list("고각", high_solutions)
+
+    low_label.config(text=low_message)
+    high_label.config(text=high_message)
+    delta_label.config(text=f"고도 차이: {altitude_delta:+.1f} m")
 
 
 def build_gui():
@@ -185,13 +185,32 @@ def build_gui():
     version = load_version()
     tk.Label(root, text=f"버전: {version}").grid(row=3, column=0, columnspan=2, pady=(0, 5))
 
-    result_label = tk.Label(root, text="계산 결과가 여기에 표시됩니다", justify="left", anchor="w")
-    result_label.grid(row=5, column=0, columnspan=2, sticky="w", padx=5, pady=10)
+    results_frame = tk.Frame(root)
+    results_frame.grid(row=5, column=0, columnspan=2, sticky="ew", padx=5, pady=10)
+
+    low_label = tk.Label(results_frame, text="저각:", justify="left", anchor="nw")
+    low_label.grid(row=0, column=0, sticky="nw")
+
+    high_label = tk.Label(results_frame, text="고각:", justify="left", anchor="nw")
+    high_label.grid(row=0, column=1, sticky="nw", padx=(10, 0))
+
+    results_frame.columnconfigure(0, weight=1)
+    results_frame.columnconfigure(1, weight=1)
+
+    delta_label = tk.Label(root, text="고도 차이: 계산 필요", anchor="w", justify="left")
+    delta_label.grid(row=6, column=0, columnspan=2, sticky="w", padx=5)
 
     calculate_button = tk.Button(
         root,
         text="계산",
-        command=lambda: calculate_and_display(result_label, my_altitude_entry, target_altitude_entry, distance_entry),
+        command=lambda: calculate_and_display(
+            low_label,
+            high_label,
+            delta_label,
+            my_altitude_entry,
+            target_altitude_entry,
+            distance_entry,
+        ),
     )
     calculate_button.grid(row=4, column=0, padx=5, pady=5, sticky="ew")
 
