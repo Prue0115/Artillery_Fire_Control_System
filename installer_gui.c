@@ -88,6 +88,11 @@ static int compile_cli(void) {
     return result == 0;
 }
 
+static int compile_auto_updater(void) {
+    int result = system("cc -o auto_updater auto_updater.c gui_dialogs.c");
+    return result == 0;
+}
+
 static int create_launcher(const char *install_dir, int create_shortcut) {
     char launcher_path[1024];
     snprintf(launcher_path, sizeof(launcher_path), "%s/ArtilleryCalculator.command", install_dir);
@@ -189,6 +194,15 @@ int main(void) {
         }
     }
 
+    if (access("auto_updater", X_OK) != 0) {
+        printf("auto_updater 바이너리를 찾을 수 없습니다. 소스를 컴파일합니다...\n");
+        if (!compile_auto_updater()) {
+            fprintf(stderr, "auto_updater 컴파일에 실패했습니다.\n");
+            free(chosen);
+            return 1;
+        }
+    }
+
     char dest_bin[1024];
     snprintf(dest_bin, sizeof(dest_bin), "%s/cli_calculator", chosen);
     if (copy_file("cli_calculator", dest_bin) != 0) {
@@ -197,6 +211,15 @@ int main(void) {
         return 1;
     }
     chmod(dest_bin, 0755);
+
+    char dest_updater[1024];
+    snprintf(dest_updater, sizeof(dest_updater), "%s/auto_updater", chosen);
+    if (copy_file("auto_updater", dest_updater) != 0) {
+        fprintf(stderr, "auto_updater 복사에 실패했습니다.\n");
+        free(chosen);
+        return 1;
+    }
+    chmod(dest_updater, 0755);
 
     char dest_tables[1024];
     snprintf(dest_tables, sizeof(dest_tables), "%s/rangeTables", chosen);

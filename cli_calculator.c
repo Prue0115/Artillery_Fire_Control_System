@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "version.h"
 #include <dirent.h>
 
 #define MAX_ROWS 4000
@@ -42,6 +44,7 @@ static void usage(void) {
     fprintf(stderr, "- system, distance는 필수입니다.\n");
     fprintf(stderr, "- trajectory/charge를 생략하면 해당 시스템의 모든 표에서 범위 안에 들어오는 결과를 모두 출력합니다.\n");
     fprintf(stderr, "- --list로 로드 가능한 시스템/궤적/장약 조합을 확인할 수 있습니다.\n");
+    fprintf(stderr, "- --version으로 현재 빌드 버전을 확인할 수 있습니다.\n");
 }
 
 static int parse_filename(const char *name, char *system, char *trajectory, int *charge) {
@@ -232,6 +235,8 @@ int main(int argc, char *argv[]) {
     double distance = -1.0;
     double altitude_delta = 0.0;
     int list_only = 0;
+    int show_version = 0;
+    TableInfo *tables = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--system") == 0 && i + 1 < argc) {
@@ -246,7 +251,14 @@ int main(int argc, char *argv[]) {
             altitude_delta = atof(argv[++i]);
         } else if (strcmp(argv[i], "--list") == 0) {
             list_only = 1;
+        } else if (strcmp(argv[i], "--version") == 0) {
+            show_version = 1;
         }
+    }
+
+    if (show_version) {
+        printf("cli_calculator version %s\n", APP_VERSION);
+        return 0;
     }
 
     if (!system) {
@@ -254,7 +266,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    TableInfo *tables = calloc(MAX_TABLES, sizeof(TableInfo));
+    tables = calloc(MAX_TABLES, sizeof(TableInfo));
     if (!tables) {
         fprintf(stderr, "메모리를 할당할 수 없습니다.\n");
         return 1;

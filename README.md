@@ -8,7 +8,10 @@ macOS 네이티브 다이얼로그(osascript)를 활용한 깔끔한 GUI 인스�
 ```bash
 gcc -o cli_calculator cli_calculator.c
 
-# GUI 인스톨러 빌드 (macOS 우선)
+// 버전 표기 및 업데이트 체크 유틸리티 빌드
+gcc -o auto_updater auto_updater.c gui_dialogs.c
+
+# GUI 인스톨러 빌드 (macOS 우선, auto_updater도 함께 포함)
 gcc -o installer_gui installer_gui.c gui_dialogs.c
 ```
 
@@ -20,12 +23,21 @@ gcc -o installer_gui installer_gui.c gui_dialogs.c
 # 거리 5000m, 고도차 +50m(사수-목표), 모든 장약/궤적 결과 출력
 ./cli_calculator --system M109A6 --distance 5000 --altitude-delta 50
 
+# 현재 빌드 버전 확인
+./cli_calculator --version
+
 # 고각 궤적, 장약 3만 대상으로 계산
 ./cli_calculator --system M109A6 --trajectory high --charge 3 --distance 5000
 
 # 새로 추가된 장비 예시 (Siala, RH-70)
 ./cli_calculator --system Siala --distance 900
 ./cli_calculator --system RH-70 --trajectory low --distance 1000
+
+# 업데이트 매니페스트를 받아 새 실행 파일로 교체
+./auto_updater --manifest https://example.com/update.json --binary ./cli_calculator
+
+# GUI 인스톨러로 설치한 경우 설치 경로에 auto_updater도 함께 배포되므로 다음처럼 호출할 수 있습니다.
+~/Applications/ArtilleryCalculator/auto_updater --manifest https://example.com/update.json --binary ~/Applications/ArtilleryCalculator/cli_calculator
 ```
 
 ### GUI 인스톨러 사용 흐름 (macOS 권장)
