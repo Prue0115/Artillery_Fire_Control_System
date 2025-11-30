@@ -148,6 +148,7 @@ def find_solutions(
     filter_fn=None,
     track_filtered: bool = False,
     report_missing: bool = False,
+    collect_missing: bool = False,
 ):
     # M1129 포각 제한(-5°~35°)을 기본으로 적용하여 잘못된 해법을 자동으로 숨긴다
     if system == "M1129" and filter_fn is None:
@@ -156,11 +157,14 @@ def find_solutions(
     solutions = []
     filtered_out = False
     found_table = False
+    missing_tables: list[str] = []
     charges = [0, 1, 2, 3, 4]
     for charge in charges:
         try:
             table = RangeTable(system, trajectory, charge)
         except FileNotFoundError:
+            if collect_missing:
+                missing_tables.append(f"{SYSTEM_FILE_PREFIX.get(system, system)}_rangeTable_{trajectory}_{charge}.csv")
             continue
         found_table = True
         if not table.supports_range(distance):
@@ -181,11 +185,19 @@ def find_solutions(
             break
 
     if track_filtered and report_missing:
+        if collect_missing:
+            return solutions, filtered_out, found_table, missing_tables
         return solutions, filtered_out, found_table
     if track_filtered:
+        if collect_missing:
+            return solutions, filtered_out, missing_tables
         return solutions, filtered_out
     if report_missing:
+        if collect_missing:
+            return solutions, found_table, missing_tables
         return solutions, found_table
+    if collect_missing:
+        return solutions, missing_tables
     return solutions
 
 
@@ -261,7 +273,7 @@ def calculate_and_display(
     high_message = None
 
     if system == "M1129":
-        low_solutions, low_clamped, low_found = find_solutions(
+        low_solutions, low_clamped, low_found, low_missing = find_solutions(
             distance,
             altitude_delta,
             "low",
@@ -270,8 +282,9 @@ def calculate_and_display(
             filter_fn=enforce_m1129_elevation_limits,
             track_filtered=True,
             report_missing=True,
+            collect_missing=True,
         )
-        high_solutions, high_clamped, high_found = find_solutions(
+        high_solutions, high_clamped, high_found, high_missing = find_solutions(
             distance,
             altitude_delta,
             "high",
@@ -280,6 +293,7 @@ def calculate_and_display(
             filter_fn=enforce_m1129_elevation_limits,
             track_filtered=True,
             report_missing=True,
+            collect_missing=True,
         )
 
         if not low_found:
@@ -297,6 +311,18 @@ def calculate_and_display(
                 "포각 제한(-5°~35°)을 벗어난 해법이 제외되었습니다"
                 if high_solutions
                 else "포각 제한(-5°~35°)으로 표시할 해법이 없습니다"
+            )
+
+        missing_lists = []
+        if low_missing:
+            missing_lists.extend(low_missing)
+        if high_missing:
+            missing_lists.extend(high_missing)
+        if missing_lists:
+            missing_msg = "\n".join(sorted(set(missing_lists)))
+            messagebox.showwarning(
+                "M1129 사거리표가 없습니다",
+                "rangeTables 폴더에 아래 파일을 추가해 주세요:\n" + missing_msg,
             )
     else:
         low_solutions, low_found = find_solutions(
