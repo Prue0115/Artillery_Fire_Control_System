@@ -17,7 +17,7 @@ MONO_FONT = ("SF Mono", 12)
 
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
-SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M119": "M1129"}
+SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129"}
 
 
 class RangeTable:
@@ -328,7 +328,7 @@ def build_gui():
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
-        text="M109A6 · M119 저각·고각 해법을 깔끔한 표로 확인하세요.",
+        text="M109A6 · M1129 저각·고각 해법을 깔끔한 표로 확인하세요.",
         style="Muted.TLabel",
     )
     subtitle.grid(row=1, column=0, sticky="w")
@@ -340,7 +340,7 @@ def build_gui():
     system_select = ttk.Combobox(
         system_picker,
         textvariable=system_var,
-        values=["M109A6", "M119"],
+        values=["M109A6", "M1129"],
         state="readonly",
         width=8,
         font=BODY_FONT,
