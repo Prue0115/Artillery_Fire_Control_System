@@ -1,5 +1,4 @@
 import csv
-import json
 import math
 import tkinter as tk
 from pathlib import Path
@@ -17,15 +16,16 @@ MONO_FONT = ("SF Mono", 12)
 
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
-VERSION_FILE = BASE_DIR / "version.txt"
-UPDATE_MANIFEST = BASE_DIR / "update_manifest.json"
+SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M119": "M1129"}
 
 
 class RangeTable:
-    def __init__(self, trajectory: str, charge: int):
+    def __init__(self, system: str, trajectory: str, charge: int):
+        self.system = system
         self.trajectory = trajectory
         self.charge = charge
-        self.path = RANGE_TABLE_DIR / f"M109A6_rangeTable_{trajectory}_{charge}.csv"
+        prefix = SYSTEM_FILE_PREFIX.get(system, system)
+        self.path = RANGE_TABLE_DIR / f"{prefix}_rangeTable_{trajectory}_{charge}.csv"
         self.rows = self._load_rows()
 
     def _load_rows(self):
@@ -45,6 +45,8 @@ class RangeTable:
         return rows
 
     def supports_range(self, distance: float) -> bool:
+        if not self.rows:
+            return False
         distances = [row["range"] for row in self.rows]
         return min(distances) <= distance <= max(distances)
 
@@ -88,11 +90,16 @@ class RangeTable:
         return lower, upper
 
 
-def find_solutions(distance: float, altitude_delta: float, trajectory: str, limit: int = 3):
+def find_solutions(
+    distance: float, altitude_delta: float, trajectory: str, system: str = "M109A6", limit: int = 3
+):
     solutions = []
     charges = [0, 1, 2, 3, 4]
     for charge in charges:
-        table = RangeTable(trajectory, charge)
+        try:
+            table = RangeTable(system, trajectory, charge)
+        except FileNotFoundError:
+            continue
         if not table.supports_range(distance):
             continue
         try:
@@ -105,41 +112,9 @@ def find_solutions(distance: float, altitude_delta: float, trajectory: str, limi
     return solutions
 
 
-def find_solution(distance: float, altitude_delta: float, trajectory: str):
-    solutions = find_solutions(distance, altitude_delta, trajectory, limit=1)
+def find_solution(distance: float, altitude_delta: float, trajectory: str, system: str = "M109A6"):
+    solutions = find_solutions(distance, altitude_delta, trajectory, system=system, limit=1)
     return solutions[0] if solutions else None
-
-
-def load_version() -> str:
-    if VERSION_FILE.exists():
-        return VERSION_FILE.read_text(encoding="utf-8").strip()
-    return "0.0.0"
-
-
-def check_updates():
-    current_version = load_version()
-    if not UPDATE_MANIFEST.exists():
-        messagebox.showinfo("업데이트", "업데이트 정보가 없습니다. 최신 버전을 확인할 수 없습니다.")
-        return
-
-    try:
-        manifest = json.loads(UPDATE_MANIFEST.read_text(encoding="utf-8"))
-        latest = manifest.get("latest_version", current_version)
-    except (json.JSONDecodeError, OSError):
-        messagebox.showerror("업데이트", "업데이트 정보를 읽을 수 없습니다.")
-        return
-
-    if latest == current_version:
-        messagebox.showinfo("업데이트", f"현재 버전 ({current_version}) 이 최신입니다.")
-    else:
-        notes = manifest.get("notes", "")
-        url = manifest.get("download_url", "")
-        message = [f"새 버전 {latest} 이(가) 있습니다!", f"현재 버전: {current_version}"]
-        if notes:
-            message.append(f"변경점: {notes}")
-        if url:
-            message.append(f"다운로드: {url}")
-        messagebox.showinfo("업데이트", "\n".join(message))
 
 
 def format_solution_list(title: str, solutions):
@@ -171,7 +146,17 @@ def update_solution_table(rows, status_label, solutions):
             row["eta"].config(text="—", fg=MUTED_COLOR)
 
 
-def calculate_and_display(low_rows, high_rows, low_status, high_status, delta_label, my_altitude_entry, target_altitude_entry, distance_entry):
+def calculate_and_display(
+    system_var,
+    low_rows,
+    high_rows,
+    low_status,
+    high_status,
+    delta_label,
+    my_altitude_entry,
+    target_altitude_entry,
+    distance_entry,
+):
     try:
         my_alt = float(my_altitude_entry.get())
         target_alt = float(target_altitude_entry.get())
@@ -181,8 +166,9 @@ def calculate_and_display(low_rows, high_rows, low_status, high_status, delta_la
         return
 
     altitude_delta = target_alt - my_alt
-    low_solutions = find_solutions(distance, altitude_delta, "low", limit=3)
-    high_solutions = find_solutions(distance, altitude_delta, "high", limit=3)
+    system = system_var.get()
+    low_solutions = find_solutions(distance, altitude_delta, "low", system=system, limit=3)
+    high_solutions = find_solutions(distance, altitude_delta, "high", system=system, limit=3)
 
     update_solution_table(low_rows, low_status, low_solutions)
     update_solution_table(high_rows, high_status, high_solutions)
@@ -280,7 +266,7 @@ def build_solution_table(parent):
 
 def build_gui():
     root = tk.Tk()
-    root.title("M109A6 포병 계산기")
+    root.title("포병 계산기")
     root.configure(bg=APP_BG)
     root.option_add("*Font", BODY_FONT)
     apply_styles(root)
@@ -290,14 +276,29 @@ def build_gui():
 
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-    title = ttk.Label(header, text="M109A6 포병 계산기", font=TITLE_FONT, foreground=TEXT_COLOR, background=APP_BG)
+    header.columnconfigure(0, weight=1)
+    title = ttk.Label(header, text="포병 계산기", font=TITLE_FONT, foreground=TEXT_COLOR, background=APP_BG)
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
-        text="저각·고각 해법을 깔끔한 표로 확인하세요.",
+        text="M109A6 · M119 저각·고각 해법을 깔끔한 표로 확인하세요.",
         style="Muted.TLabel",
     )
     subtitle.grid(row=1, column=0, sticky="w")
+
+    system_var = tk.StringVar(value="M109A6")
+    system_picker = ttk.Frame(header, style="Main.TFrame")
+    system_picker.grid(row=0, column=1, rowspan=2, sticky="e", padx=(12, 0))
+    ttk.Label(system_picker, text="장비", style="Body.TLabel").grid(row=0, column=0, sticky="e")
+    system_select = ttk.Combobox(
+        system_picker,
+        textvariable=system_var,
+        values=["M109A6", "M119"],
+        state="readonly",
+        width=8,
+        font=BODY_FONT,
+    )
+    system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")
@@ -321,15 +322,9 @@ def build_gui():
     distance_entry = ttk.Entry(input_card)
     distance_entry.grid(row=2, column=1, sticky="ew", pady=4)
 
-    version = load_version()
-    ttk.Label(input_card, text=f"버전 {version}", style="Muted.TLabel").grid(
-        row=3, column=0, columnspan=2, sticky="w", pady=(8, 0)
-    )
-
     button_row = ttk.Frame(main, style="Main.TFrame")
     button_row.grid(row=2, column=0, sticky="ew", pady=(12, 0))
     button_row.columnconfigure(0, weight=1)
-    button_row.columnconfigure(1, weight=1)
 
     calculate_button = ttk.Button(
         button_row,
@@ -337,10 +332,7 @@ def build_gui():
         style="Primary.TButton",
         command=lambda: None,
     )
-    calculate_button.grid(row=0, column=0, sticky="ew", padx=(0, 6))
-
-    update_button = ttk.Button(button_row, text="업데이트 확인", style="Secondary.TButton", command=check_updates)
-    update_button.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+    calculate_button.grid(row=0, column=0, sticky="ew")
 
     results_card = ttk.Frame(main, style="Card.TFrame", padding=16)
     results_card.grid(row=3, column=0, sticky="ew", pady=(16, 0))
@@ -367,6 +359,7 @@ def build_gui():
 
     calculate_button.configure(
         command=lambda: calculate_and_display(
+            system_var,
             low_rows,
             high_rows,
             low_status,
