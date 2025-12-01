@@ -300,7 +300,7 @@ def _format_log_entry(entry):
         f"Distance {entry['distance']:>6g}m"
     )
 
-    low_block_width = 41
+    low_block_width = 34
     low_block_header = f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}"
     lines = [
         (f"{header_line}\n", "time"),
