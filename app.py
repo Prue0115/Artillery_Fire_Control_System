@@ -239,11 +239,13 @@ def log_calculation(
     high_solutions,
 ):
     timestamp = datetime.now().strftime("%H:%M")
-    header = f"나의 고도(m) : {my_alt:g} | 목표물 고도(m) : {target_alt:g} | 거리(m) : {distance:g} | 장비 : {system}"
+    meta_line_1 = f"나의 고도(m) : {my_alt:g} | 목표물 고도(m) : {target_alt:g}"
+    meta_line_2 = f"거리(m) : {distance:g} | 장비 : {system}"
 
     lines = [
         (f"시간 {timestamp}\n", "time"),
-        (f"{header}\n", "meta"),
+        (f"{meta_line_1}\n", "meta"),
+        (f"{meta_line_2}\n", "meta"),
         ("LOW                                     HIGH\n", "header"),
         ("CH   MILL   ETA                         CH   MILL   ETA\n", "header"),
     ]
@@ -263,7 +265,7 @@ def log_calculation(
     log_text.configure(state="normal")
     if log_text.index("end-1c") != "1.0":
         log_text.insert("end", "\n", ("divider",))
-        log_text.insert("end", "─" * 62 + "\n", ("divider",))
+        log_text.insert("end", "─" * 66 + "\n", ("divider",))
     for chunk, tag in lines:
         log_text.insert("end", chunk, (tag,) if tag else ())
     log_text.see("end")
@@ -537,7 +539,7 @@ def build_gui():
     ).grid(row=0, column=0, sticky="w", pady=(0, 6))
     log_text = tk.Text(
         log_frame,
-        width=60,
+        width=66,
         height=22,
         bg="#fafafa",
         fg=TEXT_COLOR,
@@ -557,9 +559,9 @@ def build_gui():
     log_text.tag_configure("meta", foreground=MUTED_COLOR)
     log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
     log_text.tag_configure("divider", foreground="#d2d2d7")
-    x_scroll = ttk.Scrollbar(log_frame, orient="horizontal", command=log_text.xview)
-    x_scroll.grid(row=2, column=0, sticky="ew")
-    log_text.configure(xscrollcommand=x_scroll.set)
+    y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
+    y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
+    log_text.configure(yscrollcommand=y_scroll.set)
 
     def _on_mousewheel(event):
         log_text.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -574,6 +576,7 @@ def build_gui():
     log_text.bind("<Button-4>", _on_linux_scroll)
     log_text.bind("<Button-5>", _on_linux_scroll)
     log_frame.columnconfigure(0, weight=1)
+    log_frame.columnconfigure(1, weight=0)
     log_frame.rowconfigure(1, weight=1)
 
     log_visible = {"value": False}
