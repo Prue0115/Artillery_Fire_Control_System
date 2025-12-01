@@ -602,6 +602,7 @@ def configure_log_widget(log_text: tk.Text):
         insertbackground=TEXT_COLOR,
         selectbackground=ACCENT_COLOR,
         selectforeground="#ffffff",
+        font=MONO_FONT,
     )
     log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
     log_text.tag_configure("meta", foreground=MUTED_COLOR)
