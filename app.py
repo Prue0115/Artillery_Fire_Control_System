@@ -308,13 +308,16 @@ def _format_log_entry(entry):
         (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
     ]
 
-    low_solutions = sorted(entry["low"], key=lambda s: s["charge"])
-    high_solutions = sorted(entry["high"], key=lambda s: s["charge"])
+    low_map = {solution["charge"]: solution for solution in entry["low"]}
+    high_map = {solution["charge"]: solution for solution in entry["high"]}
 
-    row_count = max(len(low_solutions), len(high_solutions), 1)
-    for idx in range(row_count):
-        low = low_solutions[idx] if idx < len(low_solutions) else None
-        high = high_solutions[idx] if idx < len(high_solutions) else None
+    charges = sorted(set(low_map.keys()) | set(high_map.keys()))
+    if not charges:
+        charges = [None]
+
+    for charge in charges:
+        low = low_map.get(charge)
+        high = high_map.get(charge)
 
         def fmt(solution):
             if solution:
