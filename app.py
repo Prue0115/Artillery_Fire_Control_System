@@ -308,10 +308,13 @@ def _format_log_entry(entry):
         (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
     ]
 
-    row_count = max(len(entry["low"]), len(entry["high"]), 1)
+    low_solutions = sorted(entry["low"], key=lambda s: s["charge"])
+    high_solutions = sorted(entry["high"], key=lambda s: s["charge"])
+
+    row_count = max(len(low_solutions), len(high_solutions), 1)
     for idx in range(row_count):
-        low = entry["low"][idx] if idx < len(entry["low"]) else None
-        high = entry["high"][idx] if idx < len(entry["high"]) else None
+        low = low_solutions[idx] if idx < len(low_solutions) else None
+        high = high_solutions[idx] if idx < len(high_solutions) else None
 
         def fmt(solution):
             if solution:
