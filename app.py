@@ -1,6 +1,7 @@
 import csv
 import math
 from bisect import bisect_left
+from datetime import datetime
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -18,7 +19,13 @@ MONO_FONT = ("SF Mono", 12)
 MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
-SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129", "M119": "M119"}
+SYSTEM_FILE_PREFIX = {
+    "M109A6": "M109A6",
+    "M1129": "M1129",
+    "M119": "M119",
+    "RH-70": "RM70",
+    "siala": "siala",
+}
 
 # 장비별로 고정된 궤적으로만 사격해야 하는 경우를 명시한다.
 # 지정되지 않은 장비는 존재하는 CSV 파일을 기준으로 자동 감지한다.
@@ -222,6 +229,90 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
             row["eta"].config(text="—", fg=MUTED_COLOR)
 
 
+def _format_log_entry(entry):
+    timestamp = entry["timestamp"].strftime("%H:%M")
+
+    header_line = f"시간 {timestamp} · 장비 {entry['system']}"
+    meta_line = (
+        f"나의 고도 {entry['my_alt']:>5g}m  |  "
+        f"목표물 고도 {entry['target_alt']:>5g}m  |  "
+        f"거리 {entry['distance']:>6g}m"
+    )
+
+    lines = [
+        (f"{header_line}\n", "time"),
+        (f"{meta_line}\n", "meta"),
+        ("┄" * 62 + "\n", "divider"),
+        (f"{'LOW':<28}{'HIGH'}\n", "header"),
+        (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
+    ]
+
+    row_count = max(len(entry["low"]), len(entry["high"]), 1)
+    for idx in range(row_count):
+        low = entry["low"][idx] if idx < len(entry["low"]) else None
+        high = entry["high"][idx] if idx < len(entry["high"]) else None
+
+        def fmt(solution):
+            if solution:
+                return f"{solution['charge']:>3}   {solution['mill']:>8.2f}   {solution['eta']:>5.1f}"
+            return f"{'—':>3}   {'—':>8}   {'—':>5}"
+
+        lines.append((f"{fmt(low):<28}{fmt(high)}\n", "row"))
+
+    lines.append(("\n", None))
+    return lines
+
+
+def render_log(log_text: tk.Text, entries, equipment_filter: str):
+    log_text.configure(state="normal")
+    log_text.delete("1.0", "end")
+
+    filtered_entries = entries
+    if equipment_filter and equipment_filter != "전체":
+        filtered_entries = [e for e in entries if e["system"] == equipment_filter]
+
+    if not filtered_entries:
+        empty_msg = "선택한 조건에 맞는 기록이 없습니다."
+        log_text.insert("end", empty_msg, ("meta",))
+        log_text.configure(state="disabled")
+        return
+
+    for idx, entry in enumerate(filtered_entries):
+        if idx > 0:
+            log_text.insert("end", "\n", ("divider",))
+            log_text.insert("end", "─" * 66 + "\n", ("divider",))
+        for chunk, tag in _format_log_entry(entry):
+            log_text.insert("end", chunk, (tag,) if tag else ())
+
+    log_text.see("end")
+    log_text.configure(state="disabled")
+
+
+def log_calculation(
+    log_text: tk.Text,
+    log_entries: list,
+    equipment_filter: tk.StringVar,
+    my_alt: float,
+    target_alt: float,
+    distance: float,
+    system: str,
+    low_solutions,
+    high_solutions,
+):
+    log_entries.append(
+        {
+            "timestamp": datetime.now(),
+            "my_alt": my_alt,
+            "target_alt": target_alt,
+            "distance": distance,
+            "system": system,
+            "low": low_solutions,
+            "high": high_solutions,
+        }
+    )
+    render_log(log_text, log_entries, equipment_filter.get())
+
+
 def calculate_and_display(
     system_var,
     low_rows,
@@ -232,6 +323,9 @@ def calculate_and_display(
     my_altitude_entry,
     target_altitude_entry,
     distance_entry,
+    log_entries,
+    log_equipment_filter,
+    log_text,
 ):
     try:
         my_alt = float(my_altitude_entry.get())
@@ -282,6 +376,18 @@ def calculate_and_display(
     update_solution_table(low_rows, low_status, low_solutions, message=low_message)
     update_solution_table(high_rows, high_status, high_solutions, message=high_message)
     delta_label.config(text=f"고도 차이(사수-목표): {altitude_delta:+.1f} m")
+
+    log_calculation(
+        log_text,
+        log_entries,
+        log_equipment_filter,
+        my_alt,
+        target_alt,
+        distance,
+        system,
+        low_solutions,
+        high_solutions,
+    )
 
 
 def apply_styles(root: tk.Tk):
@@ -402,7 +508,7 @@ def build_gui():
     system_select = ttk.Combobox(
         system_picker,
         textvariable=system_var,
-        values=["M109A6", "M1129", "M119"],
+        values=["M109A6", "M1129", "M119", "RH-70", "siala"],
         state="readonly",
         width=8,
         font=BODY_FONT,
@@ -462,9 +568,125 @@ def build_gui():
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
+    bottom_bar = ttk.Frame(main, style="Main.TFrame")
+    bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
+    bottom_bar.columnconfigure(0, weight=1)
+    log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
+    log_toggle_button.grid(row=0, column=1, sticky="e")
+
+    log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
+    log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
+    log_frame.grid_remove()
+
+    log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, 6))
+    log_header.grid(row=0, column=0, columnspan=2, sticky="ew")
+    log_header.columnconfigure(0, weight=1)
+    log_header.columnconfigure(1, weight=0)
+
+    helper_wrap = ttk.Frame(log_header, style="Main.TFrame")
+    helper_wrap.grid(row=0, column=0, sticky="w")
+
+    tk.Label(
+        helper_wrap,
+        text="장비별 기록",
+        bg="#e9f2ff",
+        fg=ACCENT_COLOR,
+        font=(BODY_FONT[0], 11, "bold"),
+        padx=10,
+        pady=6,
+        borderwidth=0,
+        relief="flat",
+    ).grid(row=0, column=0, sticky="w")
+
+    ttk.Label(
+        helper_wrap,
+        text="필터를 선택하면 해당 장비 로그만 모아 보여드립니다.",
+        style="Muted.TLabel",
+    ).grid(row=1, column=0, sticky="w", pady=(6, 0))
+
+    equipment_wrap = ttk.Frame(log_header, style="Card.TFrame")
+    equipment_wrap.grid(row=0, column=1, sticky="e")
+    ttk.Label(equipment_wrap, text="장비", style="Muted.TLabel").grid(row=0, column=0, sticky="e", padx=(0, 6))
+    log_equipment_filter = tk.StringVar(value="전체")
+    equipment_select = ttk.Combobox(
+        equipment_wrap,
+        textvariable=log_equipment_filter,
+        values=["전체", "M109A6", "M1129", "M119", "RH-70", "siala"],
+        state="readonly",
+        width=8,
+        font=BODY_FONT,
+    )
+    equipment_select.grid(row=0, column=1, sticky="e")
+    log_text = tk.Text(
+        log_frame,
+        width=66,
+        height=22,
+        bg=CARD_BG,
+        fg=TEXT_COLOR,
+        font=MONO_FONT,
+        relief="flat",
+        borderwidth=1,
+        highlightthickness=1,
+        highlightbackground="#e5e5ea",
+        highlightcolor="#e5e5ea",
+        wrap="none",
+        padx=14,
+        pady=10,
+    )
+    log_text.configure(spacing1=2, spacing3=6)
+    log_text.grid(row=1, column=0, sticky="nsew")
+    log_text.configure(state="disabled")
+    log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
+    log_text.tag_configure("meta", foreground=MUTED_COLOR)
+    log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
+    log_text.tag_configure("subheader", font=(MONO_FONT[0], 10, "bold"), foreground=MUTED_COLOR)
+    log_text.tag_configure("row", spacing1=1, spacing3=1)
+    log_text.tag_configure("divider", foreground="#d2d2d7")
+    y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
+    y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
+    log_text.configure(yscrollcommand=y_scroll.set)
+
+    def _on_mousewheel(event):
+        log_text.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        return "break"
+
+    def _on_linux_scroll(event):
+        direction = -1 if event.num == 4 else 1
+        log_text.yview_scroll(direction, "units")
+        return "break"
+
+    log_text.bind("<MouseWheel>", _on_mousewheel)
+    log_text.bind("<Button-4>", _on_linux_scroll)
+    log_text.bind("<Button-5>", _on_linux_scroll)
+    log_frame.columnconfigure(0, weight=1)
+    log_frame.columnconfigure(1, weight=0)
+    log_frame.rowconfigure(1, weight=1)
+
+    log_entries = []
+
+    def _refresh_log(event=None):
+        render_log(log_text, log_entries, log_equipment_filter.get())
+
+    equipment_select.bind("<<ComboboxSelected>>", _refresh_log)
+
+    log_visible = {"value": False}
+
+    def toggle_log():
+        log_visible["value"] = not log_visible["value"]
+        if log_visible["value"]:
+            log_frame.grid()
+            log_toggle_button.configure(text="기록 닫기")
+        else:
+            log_frame.grid_remove()
+            log_toggle_button.configure(text="기록")
+
+    log_toggle_button.configure(command=toggle_log)
+
     root.columnconfigure(0, weight=1)
+    root.columnconfigure(1, weight=0)
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
+    main.rowconfigure(3, weight=1)
 
     calculate_button.configure(
         command=lambda: calculate_and_display(
@@ -477,6 +699,9 @@ def build_gui():
             my_altitude_entry,
             target_altitude_entry,
             distance_entry,
+            log_entries,
+            log_equipment_filter,
+            log_text,
         )
     )
 
