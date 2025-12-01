@@ -242,10 +242,10 @@ def log_calculation(
     header = f"나의 고도(m) : {my_alt:g} | 목표물 고도(m) : {target_alt:g} | 거리(m) : {distance:g} | 장비 : {system}"
 
     lines = [
-        f"시간 {timestamp}",
-        header,
-        "LOW                                     HIGH",
-        "CH   MILL   ETA                         CH   MILL   ETA",
+        (f"시간 {timestamp}\n", "time"),
+        (f"{header}\n", "meta"),
+        ("LOW                                     HIGH\n", "header"),
+        ("CH   MILL   ETA                         CH   MILL   ETA\n", "header"),
     ]
 
     row_count = max(len(low_solutions), len(high_solutions), 1)
@@ -258,10 +258,14 @@ def log_calculation(
                 return f"{solution['charge']:>2} {solution['mill']:>7.2f} {solution['eta']:>6.1f}"
             return "—".ljust(17)
 
-        lines.append(f"{fmt(low):<33}{fmt(high)}")
+        lines.append((f"{fmt(low):<33}{fmt(high)}\n", None))
 
     log_text.configure(state="normal")
-    log_text.insert("end", "\n".join(lines) + "\n")
+    if log_text.index("end-1c") != "1.0":
+        log_text.insert("end", "\n", ("divider",))
+        log_text.insert("end", "─" * 62 + "\n", ("divider",))
+    for chunk, tag in lines:
+        log_text.insert("end", chunk, (tag,) if tag else ())
     log_text.see("end")
     log_text.configure(state="disabled")
 
@@ -523,25 +527,36 @@ def build_gui():
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
     log_toggle_button.grid(row=0, column=1, sticky="e")
 
-    log_frame = ttk.Frame(root, style="Card.TFrame", padding=12)
+    log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=12)
     log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
     log_frame.grid_remove()
-    ttk.Label(log_frame, text="기록", style="CardBody.TLabel", font=(BODY_FONT[0], 12, "bold")).grid(
-        row=0, column=0, sticky="w", pady=(0, 8)
-    )
+    ttk.Label(
+        log_frame,
+        text="최근 계산 결과가 순서대로 표시됩니다",
+        style="Muted.TLabel",
+    ).grid(row=0, column=0, sticky="w", pady=(0, 6))
     log_text = tk.Text(
         log_frame,
         width=48,
         height=20,
-        bg=CARD_BG,
+        bg="#fafafa",
         fg=TEXT_COLOR,
         font=MONO_FONT,
         relief="flat",
-        borderwidth=0,
+        borderwidth=1,
+        highlightthickness=1,
+        highlightbackground="#e5e5ea",
+        highlightcolor="#e5e5ea",
         wrap="none",
+        padx=10,
+        pady=8,
     )
     log_text.grid(row=1, column=0, sticky="nsew")
     log_text.configure(state="disabled")
+    log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
+    log_text.tag_configure("meta", foreground=MUTED_COLOR)
+    log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
+    log_text.tag_configure("divider", foreground="#d2d2d7")
     log_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
     log_scroll.grid(row=1, column=1, sticky="ns")
     log_text.configure(yscrollcommand=log_scroll.set)
