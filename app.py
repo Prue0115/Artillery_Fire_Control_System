@@ -628,6 +628,40 @@ def _sample_or_default(icon: tk.PhotoImage, x: int, y: int, default: str):
     return default
 
 
+def _parse_hex_color(color: str):
+    if isinstance(color, str) and color.startswith("#") and len(color) == 7:
+        try:
+            return tuple(int(color[i : i + 2], 16) for i in (1, 3, 5))
+        except ValueError:
+            return None
+    return None
+
+
+def _normalize_color(color, background: str):
+    if isinstance(color, str):
+        return color
+
+    if isinstance(color, tuple):
+        if len(color) == 3:
+            r, g, b = color
+            return f"#{r:02x}{g:02x}{b:02x}"
+
+        if len(color) == 4:
+            r, g, b, a = color
+            bg_rgb = _parse_hex_color(background)
+            if bg_rgb is None:
+                return background
+
+            br, bg, bb = bg_rgb
+            alpha = a / 255.0
+            r = int(r * alpha + br * (1 - alpha))
+            g = int(g * alpha + bg * (1 - alpha))
+            b = int(b * alpha + bb * (1 - alpha))
+            return f"#{r:02x}{g:02x}{b:02x}"
+
+    return background
+
+
 def _build_rotation_frames(
     icon: tk.PhotoImage,
     *,
@@ -653,7 +687,8 @@ def _build_rotation_frames(
                 dx, dy = x - cx, y - cy
                 src_x = int(round(dx * cos_a - dy * sin_a + cx))
                 src_y = int(round(dx * sin_a + dy * cos_a + cy))
-                color = _sample_or_default(icon, src_x, src_y, background)
+                raw_color = _sample_or_default(icon, src_x, src_y, background)
+                color = _normalize_color(raw_color, background)
                 frame.put(color, (x, y))
 
         frames.append(frame)
