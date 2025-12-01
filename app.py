@@ -328,9 +328,11 @@ def render_log(log_text: tk.Text, entries, equipment_filter: str):
     log_text.configure(state="normal")
     log_text.delete("1.0", "end")
 
-    filtered_entries = entries
+    filtered_entries = sorted(entries, key=lambda e: e["timestamp"], reverse=True)
     if equipment_filter and equipment_filter != "전체":
-        filtered_entries = [e for e in entries if e["system"] == equipment_filter]
+        filtered_entries = [
+            e for e in filtered_entries if e["system"] == equipment_filter
+        ]
 
     if not filtered_entries:
         empty_msg = "선택한 조건에 맞는 기록이 없습니다."
