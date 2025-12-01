@@ -74,6 +74,9 @@ set_theme("light")
 TITLE_FONT = ("SF Pro Display", 18, "bold")
 BODY_FONT = ("SF Pro Text", 12)
 MONO_FONT = ("SF Mono", 12)
+CH_WIDTH = 4
+MILL_WIDTH = 12
+ETA_WIDTH = 6
 
 MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
@@ -300,18 +303,21 @@ def _format_log_entry(entry):
         f"Distance {entry['distance']:>6g}m"
     )
 
-    low_block_header = f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}"
-    low_block_width = len(low_block_header) + 12
+    def _column_header():
+        return (
+            f"{'CH':>{CH_WIDTH}} "
+            f"{'MILL':>{MILL_WIDTH}} "
+            f"{'ETA':>{ETA_WIDTH}}"
+        )
+
+    low_block_header = _column_header()
+    low_block_width = len(low_block_header) + 6
     lines = [
         (f"{header_line}\n", "time"),
         (f"{meta_line}\n", "meta"),
         ("┄" * 62 + "\n", "divider"),
         (f"{'LOW':<{low_block_width}}HIGH\n", "header"),
-        (
-            f"{low_block_header:<{low_block_width}}"
-            f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}\n",
-            "subheader",
-        ),
+        (f"{low_block_header:<{low_block_width}}{_column_header()}\n", "subheader"),
     ]
 
     low_sorted = sorted(entry["low"], key=lambda s: s["charge"])
@@ -331,10 +337,15 @@ def _format_log_entry(entry):
         def fmt(solution):
             if solution:
                 return (
-                    f"{solution['charge']:>3}   {solution['mill']:>8.2f}   "
-                    f"{solution['eta']:>5.1f}"
+                    f"{solution['charge']:>{CH_WIDTH}} "
+                    f"{solution['mill']:>{MILL_WIDTH}.2f} "
+                    f"{solution['eta']:>{ETA_WIDTH}.1f}"
                 )
-            return f"{'—':>3}   {'—':>8}   {'—':>5}"
+            return (
+                f"{'—':>{CH_WIDTH}} "
+                f"{'—':>{MILL_WIDTH}} "
+                f"{'—':>{ETA_WIDTH}}"
+            )
 
         row_line = f"{fmt(low):<{low_block_width}}{fmt(high)}\n"
         lines.append((row_line, "row"))
