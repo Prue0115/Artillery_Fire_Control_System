@@ -715,7 +715,7 @@ def build_gui():
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
-    title = ttk.Label(header, text="AFCS v1.1", style="Title.TLabel")
+    title = ttk.Label(header, text="AFCS v1.2", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
