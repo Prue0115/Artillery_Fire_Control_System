@@ -489,6 +489,13 @@ def apply_styles(root: tk.Tk):
         darkcolor=INPUT_BORDER,
         arrowcolor=TEXT_COLOR,
     )
+    style.map(
+        "TCombobox",
+        fieldbackground=[("readonly", INPUT_BG), ("!disabled", INPUT_BG)],
+        foreground=[("readonly", TEXT_COLOR), ("!disabled", TEXT_COLOR)],
+        bordercolor=[("focus", ACCENT_COLOR), ("!focus", INPUT_BORDER)],
+        arrowcolor=[("disabled", MUTED_COLOR), ("!disabled", TEXT_COLOR)],
+    )
     root.option_add("*TCombobox*Listbox.background", INPUT_BG)
     root.option_add("*TCombobox*Listbox.foreground", TEXT_COLOR)
     root.option_add("*TCombobox*Listbox.selectBackground", ACCENT_COLOR)
