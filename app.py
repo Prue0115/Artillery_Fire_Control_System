@@ -371,7 +371,7 @@ def log_calculation(
             "high": high_solutions,
         }
     )
-    render_log(log_text, log_entries, log_equipment_filter.get())
+    render_log(log_text, log_entries, equipment_filter.get())
 
 
 def calculate_and_display(
