@@ -863,18 +863,45 @@ def build_gui():
     log_body.bind("<Configure>", _on_frame_configure)
     log_canvas.bind("<Configure>", _on_canvas_configure)
 
+    def _can_scroll():
+        region = log_canvas.bbox("all")
+        if not region:
+            return False
+        content_height = region[3] - region[1]
+        return content_height > log_canvas.winfo_height()
+
     def _on_mousewheel(event):
+        if not _can_scroll():
+            return "break"
         log_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         return "break"
 
     def _on_linux_scroll(event):
+        if not _can_scroll():
+            return "break"
         direction = -1 if event.num == 4 else 1
         log_canvas.yview_scroll(direction, "units")
         return "break"
 
-    log_canvas.bind("<MouseWheel>", _on_mousewheel)
-    log_canvas.bind("<Button-4>", _on_linux_scroll)
-    log_canvas.bind("<Button-5>", _on_linux_scroll)
+    def _bind_scrollwheel(widget):
+        widget.bind_all("<MouseWheel>", _on_mousewheel)
+        widget.bind_all("<Button-4>", _on_linux_scroll)
+        widget.bind_all("<Button-5>", _on_linux_scroll)
+
+    def _unbind_scrollwheel(widget):
+        widget.unbind_all("<MouseWheel>")
+        widget.unbind_all("<Button-4>")
+        widget.unbind_all("<Button-5>")
+
+    def _on_scroll_area_enter(event):
+        _bind_scrollwheel(event.widget)
+
+    def _on_scroll_area_leave(event):
+        _unbind_scrollwheel(event.widget)
+
+    for scroll_area in (log_canvas, log_body, log_frame):
+        scroll_area.bind("<Enter>", _on_scroll_area_enter)
+        scroll_area.bind("<Leave>", _on_scroll_area_leave)
     log_frame.columnconfigure(0, weight=1)
     log_frame.columnconfigure(1, weight=0)
     log_frame.rowconfigure(1, weight=1)
