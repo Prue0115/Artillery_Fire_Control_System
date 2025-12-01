@@ -654,16 +654,9 @@ def build_gui():
     log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, 6))
     log_header.grid(row=0, column=0, columnspan=2, sticky="ew")
     log_header.columnconfigure(0, weight=1)
-    log_header.columnconfigure(1, weight=0)
-
-    ttk.Label(
-        log_header,
-        text="장비별 기록을 선택해 보세요",
-        style="Muted.TLabel",
-    ).grid(row=0, column=0, sticky="w")
 
     equipment_wrap = ttk.Frame(log_header, style="Card.TFrame")
-    equipment_wrap.grid(row=0, column=1, sticky="e")
+    equipment_wrap.grid(row=0, column=0, sticky="e")
     ttk.Label(equipment_wrap, text="장비", style="Muted.TLabel").grid(row=0, column=0, sticky="e", padx=(0, 6))
     log_equipment_filter = tk.StringVar(value="전체")
     equipment_select = ttk.Combobox(
