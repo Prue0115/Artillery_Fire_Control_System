@@ -547,6 +547,66 @@ def build_solution_table(parent):
     return rows, status
 
 
+def _draw_circle(img, cx, cy, r, *, fill, outline):
+    for y in range(img.height()):
+        for x in range(img.width()):
+            dist = math.hypot(x - cx, y - cy)
+            if dist <= r:
+                color = outline if dist >= r - 1 else fill
+                img.put(color, (x, y))
+
+
+def _add_sun_rays(img, cx, cy, *, color):
+    ray_offsets = [(0, -9), (0, 9), (-9, 0), (9, 0), (-6, -6), (6, -6), (-6, 6), (6, 6)]
+    for dx, dy in ray_offsets:
+        x, y = cx + dx, cy + dy
+        if 0 <= x < img.width() and 0 <= y < img.height():
+            img.put(color, (x, y))
+            if dx == 0:
+                img.put(color, (x + 1, y))
+                img.put(color, (x - 1, y))
+            if dy == 0:
+                img.put(color, (x, y + 1))
+                img.put(color, (x, y - 1))
+
+
+def _add_moon_cutout(img, cx, cy, *, base_color, background_color):
+    for y in range(img.height()):
+        for x in range(img.width()):
+            dist = math.hypot(x - (cx + 4), y - (cy - 1))
+            if dist <= 8:
+                img.put(background_color, (x, y))
+            elif dist <= 9:
+                img.put(base_color, (x, y))
+
+
+def create_theme_icons():
+    icons = {}
+    size = 28
+    center = size // 2
+
+    for name, palette in THEMES.items():
+        img = tk.PhotoImage(width=size, height=size)
+        base_fill = palette["CARD_BG"]
+        outline = palette["ACCENT_COLOR"]
+        _draw_circle(img, center, center, 10, fill=base_fill, outline=outline)
+
+        if name == "light":
+            _add_sun_rays(img, center, center, color=outline)
+        else:
+            _add_moon_cutout(
+                img,
+                center,
+                center,
+                base_color=base_fill,
+                background_color=palette["APP_BG"],
+            )
+
+        icons[name] = img
+
+    return icons
+
+
 def build_gui():
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
@@ -637,11 +697,18 @@ def build_gui():
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
     theme_var = tk.StringVar(value="light")
+    theme_icons = create_theme_icons()
 
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
-    theme_toggle = ttk.Button(bottom_bar, text="🌞", style="Secondary.TButton")
+    theme_toggle = ttk.Button(
+        bottom_bar,
+        image=theme_icons["light"],
+        style="Secondary.TButton",
+        padding=(10, 8),
+        takefocus=False,
+    )
     theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
     log_toggle_button.grid(row=0, column=2, sticky="e")
@@ -733,7 +800,7 @@ def build_gui():
             solution_tables=[low_rows, high_rows],
             log_text=log_text,
         )
-        theme_toggle.configure(text="🌞" if new_theme == "light" else "🌙")
+        theme_toggle.configure(image=theme_icons[new_theme])
 
     theme_toggle.configure(command=toggle_theme)
 
