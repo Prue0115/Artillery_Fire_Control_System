@@ -547,127 +547,6 @@ def build_solution_table(parent):
     return rows, status
 
 
-def _draw_circle(img, cx, cy, r, *, fill, outline):
-    for y in range(img.height()):
-        for x in range(img.width()):
-            dist = math.hypot(x - cx, y - cy)
-            if dist <= r:
-                color = outline if dist >= r - 1 else fill
-                img.put(color, (x, y))
-
-
-def _add_sun_rays(img, cx, cy, *, color):
-    ray_offsets = [(0, -9), (0, 9), (-9, 0), (9, 0), (-6, -6), (6, -6), (-6, 6), (6, 6)]
-    for dx, dy in ray_offsets:
-        x, y = cx + dx, cy + dy
-        if 0 <= x < img.width() and 0 <= y < img.height():
-            img.put(color, (x, y))
-            if dx == 0:
-                img.put(color, (x + 1, y))
-                img.put(color, (x - 1, y))
-            if dy == 0:
-                img.put(color, (x, y + 1))
-                img.put(color, (x, y - 1))
-
-
-def _add_moon_cutout(img, cx, cy, *, base_color, background_color):
-    for y in range(img.height()):
-        for x in range(img.width()):
-            dist = math.hypot(x - (cx + 4), y - (cy - 1))
-            if dist <= 8:
-                img.put(background_color, (x, y))
-            elif dist <= 9:
-                img.put(base_color, (x, y))
-
-
-def _hex_to_rgb(value: str):
-    value = value.strip()
-    if value.startswith("#"):
-        value = value[1:]
-    return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
-
-
-def _rgb_to_hex(rgb):
-    return "#%02x%02x%02x" % rgb
-
-
-def _ease_in_out(t: float) -> float:
-    # cosine ease for smoother ramp up/down
-    return 0.5 - 0.5 * math.cos(math.pi * t)
-
-
-def _build_icon_pulse_frames(icon: tk.PhotoImage):
-    frames = []
-    # Use gentle scaling factors to create a brief pulse animation.
-    scales = [(10, 10), (11, 10), (12, 10), (11, 10), (10, 10)]
-    for num, den in scales:
-        frames.append(icon.zoom(num).subsample(den))
-    return frames
-
-
-def _build_icon_transition_frames(
-    from_icon: tk.PhotoImage, to_icon: tk.PhotoImage, *, steps: int = 14
-):
-    width, height = from_icon.width(), from_icon.height()
-    frames = []
-
-    for i in range(steps + 1):
-        t = i / steps
-        eased = _ease_in_out(t)
-        frame = tk.PhotoImage(width=width, height=height)
-
-        for y in range(height):
-            for x in range(width):
-                start_color = _hex_to_rgb(from_icon.get(x, y))
-                end_color = _hex_to_rgb(to_icon.get(x, y))
-                blended = tuple(
-                    int(start + (end - start) * eased)
-                    for start, end in zip(start_color, end_color)
-                )
-                frame.put(_rgb_to_hex(blended), (x, y))
-
-        frames.append(frame)
-
-    return frames
-
-
-def create_theme_icons():
-    icons = {}
-    pulses = {}
-    transitions = {}
-    size = 28
-    center = size // 2
-
-    for name, palette in THEMES.items():
-        img = tk.PhotoImage(width=size, height=size)
-        base_fill = palette["CARD_BG"]
-        outline = palette["ACCENT_COLOR"]
-        _draw_circle(img, center, center, 10, fill=base_fill, outline=outline)
-
-        if name == "light":
-            _add_sun_rays(img, center, center, color=outline)
-        else:
-            _add_moon_cutout(
-                img,
-                center,
-                center,
-                base_color=base_fill,
-                background_color=palette["APP_BG"],
-            )
-
-        icons[name] = img
-        pulses[name] = _build_icon_pulse_frames(img)
-
-    transitions[("light", "dark")] = _build_icon_transition_frames(
-        icons["light"], icons["dark"]
-    )
-    transitions[("dark", "light")] = _build_icon_transition_frames(
-        icons["dark"], icons["light"]
-    )
-
-    return icons, pulses, transitions
-
-
 def build_gui():
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
@@ -758,18 +637,11 @@ def build_gui():
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
     theme_var = tk.StringVar(value="light")
-    theme_icons, icon_pulses, icon_transitions = create_theme_icons()
 
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
-    theme_toggle = ttk.Button(
-        bottom_bar,
-        image=theme_icons["light"],
-        style="Secondary.TButton",
-        padding=(10, 8),
-        takefocus=False,
-    )
+    theme_toggle = ttk.Button(bottom_bar, text="🌞", style="Secondary.TButton")
     theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
     log_toggle_button.grid(row=0, column=2, sticky="e")
@@ -852,42 +724,8 @@ def build_gui():
 
     log_toggle_button.configure(command=toggle_log)
 
-    def animate_theme_transition(old_theme: str, new_theme: str):
-        frames = icon_transitions.get((old_theme, new_theme))
-
-        if not frames:
-            theme_toggle.configure(image=theme_icons[new_theme])
-            animate_theme_pulse(new_theme)
-            return
-
-        theme_toggle.state(["disabled"])
-
-        def _step(idx=0):
-            theme_toggle.configure(image=frames[idx])
-            if idx + 1 < len(frames):
-                root.after(18, _step, idx + 1)
-            else:
-                theme_toggle.configure(image=theme_icons[new_theme])
-                theme_toggle.state(["!disabled"])
-                animate_theme_pulse(new_theme)
-
-        _step()
-
-    def animate_theme_pulse(theme_name: str):
-        frames = icon_pulses[theme_name]
-
-        def _step(idx=0):
-            theme_toggle.configure(image=frames[idx])
-            if idx + 1 < len(frames):
-                root.after(22, _step, idx + 1)
-            else:
-                theme_toggle.configure(image=theme_icons[theme_name])
-
-        _step()
-
     def toggle_theme():
-        old_theme = theme_var.get()
-        new_theme = "dark" if old_theme == "light" else "light"
+        new_theme = "dark" if theme_var.get() == "light" else "light"
         theme_var.set(new_theme)
         apply_theme(
             root,
@@ -895,7 +733,7 @@ def build_gui():
             solution_tables=[low_rows, high_rows],
             log_text=log_text,
         )
-        animate_theme_transition(old_theme, new_theme)
+        theme_toggle.configure(text="🌞" if new_theme == "light" else "🌙")
 
     theme_toggle.configure(command=toggle_theme)
 
