@@ -538,7 +538,7 @@ def build_gui():
     log_text = tk.Text(
         log_frame,
         width=60,
-        height=20,
+        height=22,
         bg="#fafafa",
         fg=TEXT_COLOR,
         font=MONO_FONT,
@@ -557,11 +557,22 @@ def build_gui():
     log_text.tag_configure("meta", foreground=MUTED_COLOR)
     log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
     log_text.tag_configure("divider", foreground="#d2d2d7")
-    y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
-    y_scroll.grid(row=1, column=1, sticky="ns")
     x_scroll = ttk.Scrollbar(log_frame, orient="horizontal", command=log_text.xview)
     x_scroll.grid(row=2, column=0, sticky="ew")
-    log_text.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+    log_text.configure(xscrollcommand=x_scroll.set)
+
+    def _on_mousewheel(event):
+        log_text.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        return "break"
+
+    def _on_linux_scroll(event):
+        direction = -1 if event.num == 4 else 1
+        log_text.yview_scroll(direction, "units")
+        return "break"
+
+    log_text.bind("<MouseWheel>", _on_mousewheel)
+    log_text.bind("<Button-4>", _on_linux_scroll)
+    log_text.bind("<Button-5>", _on_linux_scroll)
     log_frame.columnconfigure(0, weight=1)
     log_frame.rowconfigure(1, weight=1)
 
