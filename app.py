@@ -496,10 +496,16 @@ def apply_styles(root: tk.Tk):
         bordercolor=[("focus", ACCENT_COLOR), ("!focus", INPUT_BORDER)],
         arrowcolor=[("disabled", MUTED_COLOR), ("!disabled", TEXT_COLOR)],
     )
-    root.option_add("*TCombobox*Listbox.background", INPUT_BG)
-    root.option_add("*TCombobox*Listbox.foreground", TEXT_COLOR)
-    root.option_add("*TCombobox*Listbox.selectBackground", ACCENT_COLOR)
-    root.option_add("*TCombobox*Listbox.selectForeground", "#ffffff")
+    combobox_popup_options = {
+        "background": INPUT_BG,
+        "foreground": TEXT_COLOR,
+        "selectBackground": ACCENT_COLOR,
+        "selectForeground": "#ffffff",
+        "borderColor": BORDER_COLOR,
+    }
+    for key, value in combobox_popup_options.items():
+        root.option_add(f"*TCombobox*Listbox.{key}", value)
+        root.option_add(f"*Combobox*Listbox.{key}", value)
 
     style.configure(
         "Primary.TButton",
