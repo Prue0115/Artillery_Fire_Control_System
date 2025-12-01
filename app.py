@@ -15,6 +15,7 @@ THEMES = {
         "MUTED_COLOR": "#6e6e73",
         "ACCENT_COLOR": "#007aff",
         "BORDER_COLOR": "#e5e5ea",
+        "INPUT_BG": "#ffffff",
     },
     "dark": {
         "APP_BG": "#1c1c1e",
@@ -23,6 +24,7 @@ THEMES = {
         "MUTED_COLOR": "#8e8e93",
         "ACCENT_COLOR": "#0a84ff",
         "BORDER_COLOR": "#3a3a3c",
+        "INPUT_BG": "#3a3a3c",
     },
 }
 
@@ -32,17 +34,19 @@ TEXT_COLOR = ""
 MUTED_COLOR = ""
 ACCENT_COLOR = ""
 BORDER_COLOR = ""
+INPUT_BG = ""
 
 
 def set_theme(theme_name: str):
     theme = THEMES[theme_name]
-    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR, INPUT_BG
     APP_BG = theme["APP_BG"]
     CARD_BG = theme["CARD_BG"]
     TEXT_COLOR = theme["TEXT_COLOR"]
     MUTED_COLOR = theme["MUTED_COLOR"]
     ACCENT_COLOR = theme["ACCENT_COLOR"]
     BORDER_COLOR = theme["BORDER_COLOR"]
+    INPUT_BG = theme["INPUT_BG"]
 
 
 set_theme("light")
@@ -441,6 +445,40 @@ def apply_styles(root: tk.Tk):
     style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
 
     style.configure(
+        "Input.TEntry",
+        foreground=TEXT_COLOR,
+        fieldbackground=INPUT_BG,
+        background=INPUT_BG,
+        bordercolor=BORDER_COLOR,
+        lightcolor=BORDER_COLOR,
+        darkcolor=BORDER_COLOR,
+        padding=8,
+        relief="flat",
+    )
+    style.map(
+        "Input.TEntry",
+        fieldbackground=[("disabled", BORDER_COLOR), ("focus", INPUT_BG)],
+        foreground=[("disabled", MUTED_COLOR)],
+    )
+
+    style.configure(
+        "Input.TCombobox",
+        foreground=TEXT_COLOR,
+        fieldbackground=INPUT_BG,
+        background=INPUT_BG,
+        bordercolor=BORDER_COLOR,
+        lightcolor=BORDER_COLOR,
+        darkcolor=BORDER_COLOR,
+        arrowcolor=TEXT_COLOR,
+        padding=8,
+    )
+    style.map(
+        "Input.TCombobox",
+        fieldbackground=[("readonly", INPUT_BG), ("focus", INPUT_BG)],
+        foreground=[("disabled", MUTED_COLOR)],
+    )
+
+    style.configure(
         "Primary.TButton",
         font=(BODY_FONT[0], 12, "bold"),
         foreground="#ffffff",
@@ -580,6 +618,7 @@ def build_gui():
         state="readonly",
         width=8,
         font=BODY_FONT,
+        style="Input.TCombobox",
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
 
@@ -590,19 +629,19 @@ def build_gui():
     ttk.Label(input_card, text="My ALT (m)", style="CardBody.TLabel").grid(
         row=0, column=0, sticky="e", padx=(0, 10), pady=4
     )
-    my_altitude_entry = ttk.Entry(input_card)
+    my_altitude_entry = ttk.Entry(input_card, style="Input.TEntry")
     my_altitude_entry.grid(row=0, column=1, sticky="ew", pady=4)
 
     ttk.Label(input_card, text="Target ALT (m)", style="CardBody.TLabel").grid(
         row=1, column=0, sticky="e", padx=(0, 10), pady=4
     )
-    target_altitude_entry = ttk.Entry(input_card)
+    target_altitude_entry = ttk.Entry(input_card, style="Input.TEntry")
     target_altitude_entry.grid(row=1, column=1, sticky="ew", pady=4)
 
     ttk.Label(input_card, text="Distance (m)", style="CardBody.TLabel").grid(
         row=2, column=0, sticky="e", padx=(0, 10), pady=4
     )
-    distance_entry = ttk.Entry(input_card)
+    distance_entry = ttk.Entry(input_card, style="Input.TEntry")
     distance_entry.grid(row=2, column=1, sticky="ew", pady=4)
 
     button_row = ttk.Frame(main, style="Main.TFrame")
@@ -665,6 +704,7 @@ def build_gui():
         state="readonly",
         width=8,
         font=BODY_FONT,
+        style="Input.TCombobox",
     )
     equipment_select.grid(row=0, column=1, sticky="e")
     log_text = tk.Text(
