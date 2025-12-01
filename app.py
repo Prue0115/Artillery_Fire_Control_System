@@ -15,6 +15,12 @@ THEMES = {
         "MUTED_COLOR": "#6e6e73",
         "ACCENT_COLOR": "#007aff",
         "BORDER_COLOR": "#e5e5ea",
+        "INPUT_BG": "#ffffff",
+        "INPUT_BORDER": "#d1d1d6",
+        "HOVER_BG": "#e6f0ff",
+        "PRESSED_BG": "#d6e5ff",
+        "SECONDARY_ACTIVE": "#f0f4ff",
+        "PRIMARY_PRESSED": "#0060df",
     },
     "dark": {
         "APP_BG": "#1c1c1e",
@@ -23,6 +29,12 @@ THEMES = {
         "MUTED_COLOR": "#8e8e93",
         "ACCENT_COLOR": "#0a84ff",
         "BORDER_COLOR": "#3a3a3c",
+        "INPUT_BG": "#2c2c2e",
+        "INPUT_BORDER": "#4a4a4c",
+        "HOVER_BG": "#0f2f55",
+        "PRESSED_BG": "#0c2441",
+        "SECONDARY_ACTIVE": "#2f2f33",
+        "PRIMARY_PRESSED": "#07294d",
     },
 }
 
@@ -32,23 +44,39 @@ TEXT_COLOR = ""
 MUTED_COLOR = ""
 ACCENT_COLOR = ""
 BORDER_COLOR = ""
+INPUT_BG = ""
+INPUT_BORDER = ""
+HOVER_BG = ""
+PRESSED_BG = ""
+SECONDARY_ACTIVE = ""
+PRIMARY_PRESSED = ""
 
 
 def set_theme(theme_name: str):
     theme = THEMES[theme_name]
     global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
     APP_BG = theme["APP_BG"]
     CARD_BG = theme["CARD_BG"]
     TEXT_COLOR = theme["TEXT_COLOR"]
     MUTED_COLOR = theme["MUTED_COLOR"]
     ACCENT_COLOR = theme["ACCENT_COLOR"]
     BORDER_COLOR = theme["BORDER_COLOR"]
+    INPUT_BG = theme["INPUT_BG"]
+    INPUT_BORDER = theme["INPUT_BORDER"]
+    HOVER_BG = theme["HOVER_BG"]
+    PRESSED_BG = theme["PRESSED_BG"]
+    SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]
+    PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]
 
 
 set_theme("light")
 TITLE_FONT = ("SF Pro Display", 18, "bold")
 BODY_FONT = ("SF Pro Text", 12)
 MONO_FONT = ("SF Mono", 12)
+CH_WIDTH = 4
+MILL_WIDTH = 12
+ETA_WIDTH = 6
 
 MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
@@ -263,69 +291,138 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
             row["ch"].config(text="—", fg=MUTED_COLOR)
             row["mill"].config(text="—", fg=MUTED_COLOR)
             row["eta"].config(text="—", fg=MUTED_COLOR)
+def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
+    for child in log_body.winfo_children():
+        child.destroy()
 
-
-def _format_log_entry(entry):
-    timestamp = entry["timestamp"].strftime("%H:%M")
-
-    header_line = f"시간 {timestamp} · 장비 {entry['system']}"
-    meta_line = (
-        f"My ALT {entry['my_alt']:>5g}m  |  "
-        f"Target ALT {entry['target_alt']:>5g}m  |  "
-        f"Distance {entry['distance']:>6g}m"
-    )
-
-    lines = [
-        (f"{header_line}\n", "time"),
-        (f"{meta_line}\n", "meta"),
-        ("┄" * 62 + "\n", "divider"),
-        (f"{'LOW':<28}{'HIGH'}\n", "header"),
-        (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
-    ]
-
-    row_count = max(len(entry["low"]), len(entry["high"]), 1)
-    for idx in range(row_count):
-        low = entry["low"][idx] if idx < len(entry["low"]) else None
-        high = entry["high"][idx] if idx < len(entry["high"]) else None
-
-        def fmt(solution):
-            if solution:
-                return f"{solution['charge']:>3}   {solution['mill']:>8.2f}   {solution['eta']:>5.1f}"
-            return f"{'—':>3}   {'—':>8}   {'—':>5}"
-
-        lines.append((f"{fmt(low):<28}{fmt(high)}\n", "row"))
-
-    lines.append(("\n", None))
-    return lines
-
-
-def render_log(log_text: tk.Text, entries, equipment_filter: str):
-    log_text.configure(state="normal")
-    log_text.delete("1.0", "end")
-
-    filtered_entries = entries
+    filtered_entries = sorted(entries, key=lambda e: e["timestamp"], reverse=True)
     if equipment_filter and equipment_filter != "전체":
-        filtered_entries = [e for e in entries if e["system"] == equipment_filter]
+        filtered_entries = [
+            e for e in filtered_entries if e["system"] == equipment_filter
+        ]
 
     if not filtered_entries:
-        empty_msg = "선택한 조건에 맞는 기록이 없습니다."
-        log_text.insert("end", empty_msg, ("meta",))
-        log_text.configure(state="disabled")
+        tk.Label(
+            log_body,
+            text="선택한 조건에 맞는 기록이 없습니다.",
+            bg=CARD_BG,
+            fg=MUTED_COLOR,
+            font=MONO_FONT,
+            anchor="w",
+        ).grid(row=0, column=0, sticky="w", padx=12, pady=8)
         return
 
     for idx, entry in enumerate(filtered_entries):
-        if idx > 0:
-            log_text.insert("end", "\n", ("divider",))
-            log_text.insert("end", "─" * 66 + "\n", ("divider",))
-        for chunk, tag in _format_log_entry(entry):
-            log_text.insert("end", chunk, (tag,) if tag else ())
+        card = ttk.Frame(log_body, style="Card.TFrame")
+        card.grid(row=idx * 2, column=0, sticky="ew", padx=0, pady=(0, 6))
+        card.columnconfigure(0, weight=1)
 
-    log_text.see("end")
-    log_text.configure(state="disabled")
+        tk.Label(
+            card,
+            text=f"시간 {entry['timestamp'].strftime('%H:%M')} · 장비 {entry['system']}",
+            bg=CARD_BG,
+            fg=ACCENT_COLOR,
+            font=(MONO_FONT[0], 12, "bold"),
+            anchor="w",
+        ).grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
+
+        tk.Label(
+            card,
+            text=(
+                f"My ALT {entry['my_alt']:>5g}m  |  "
+                f"Target ALT {entry['target_alt']:>5g}m  |  "
+                f"Distance {entry['distance']:>6g}m"
+            ),
+            bg=CARD_BG,
+            fg=MUTED_COLOR,
+            font=MONO_FONT,
+            anchor="w",
+        ).grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
+
+        table = ttk.Frame(card, style="Card.TFrame")
+        table.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 10))
+        for col in range(7):
+            weight = 0 if col == 3 else 1
+            table.grid_columnconfigure(col, weight=weight, minsize=0)
+        table.grid_columnconfigure(3, minsize=16)
+
+        def _header(text, column, columnspan=1):
+            tk.Label(
+                table,
+                text=text,
+                bg=CARD_BG,
+                fg=TEXT_COLOR,
+                font=(MONO_FONT[0], 11, "bold"),
+                anchor="w",
+            ).grid(row=0, column=column, columnspan=columnspan, sticky="w")
+
+        _header("LOW", 0, 3)
+        _header("HIGH", 4, 3)
+
+        def _column_header(label_text, column, width):
+            tk.Label(
+                table,
+                text=label_text,
+                width=width,
+                bg=CARD_BG,
+                fg=MUTED_COLOR,
+                font=(MONO_FONT[0], 10, "bold"),
+                anchor="w",
+            ).grid(row=1, column=column, sticky="w")
+
+        for idx_col, (label_text, width) in enumerate(
+            (("CH", CH_WIDTH), ("MILL", MILL_WIDTH), ("ETA", ETA_WIDTH))
+        ):
+            _column_header(label_text, idx_col, width)
+            _column_header(label_text, idx_col + 4, width)
+
+        low_sorted = sorted(entry["low"], key=lambda s: s["charge"])
+        high_sorted = sorted(entry["high"], key=lambda s: s["charge"])
+
+        low_map = {solution["charge"]: solution for solution in low_sorted}
+        high_map = {solution["charge"]: solution for solution in high_sorted}
+        charges = sorted(set(low_map.keys()) | set(high_map.keys())) or [None]
+
+        def _row(value, width, row_idx, column):
+            tk.Label(
+                table,
+                text=value,
+                width=width,
+                bg=CARD_BG,
+                fg=MUTED_COLOR if value == "—" else TEXT_COLOR,
+                font=MONO_FONT,
+                anchor="w",
+            ).grid(row=row_idx, column=column, sticky="w", pady=(2, 0))
+
+        for row_idx, charge in enumerate(charges, start=2):
+            low = low_map.get(charge)
+            high = high_map.get(charge)
+
+            def fmt(solution, key, width):
+                if not solution:
+                    return "—"
+                if key == "mill":
+                    return f"{solution[key]:.2f}"
+                if key == "eta":
+                    return f"{solution[key]:.1f}"
+                return str(solution[key])
+
+            for col_offset, key, width in (
+                (0, "charge", CH_WIDTH),
+                (1, "mill", MILL_WIDTH),
+                (2, "eta", ETA_WIDTH),
+            ):
+                _row(fmt(low, key, width), width, row_idx, col_offset)
+                _row(fmt(high, key, width), width, row_idx, col_offset + 4)
+
+        if idx < len(filtered_entries) - 1:
+            ttk.Separator(log_body, orient="horizontal").grid(
+                row=idx * 2 + 1, column=0, sticky="ew", pady=4
+            )
 
 
 def log_calculation(
-    log_text: tk.Text,
+    log_body: ttk.Frame,
     log_entries: list,
     equipment_filter: tk.StringVar,
     my_alt: float,
@@ -346,7 +443,7 @@ def log_calculation(
             "high": high_solutions,
         }
     )
-    render_log(log_text, log_entries, log_equipment_filter.get())
+    render_log(log_body, log_entries, equipment_filter.get())
 
 
 def calculate_and_display(
@@ -361,7 +458,7 @@ def calculate_and_display(
     distance_entry,
     log_entries,
     log_equipment_filter,
-    log_text,
+    log_body,
 ):
     try:
         my_alt = float(my_altitude_entry.get())
@@ -414,7 +511,7 @@ def calculate_and_display(
     delta_label.config(text=f"고도 차이(사수-목표): {altitude_delta:+.1f} m")
 
     log_calculation(
-        log_text,
+        log_body,
         log_entries,
         log_equipment_filter,
         my_alt,
@@ -443,6 +540,46 @@ def apply_styles(root: tk.Tk):
     style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
 
     style.configure(
+        "TEntry",
+        fieldbackground=INPUT_BG,
+        background=INPUT_BG,
+        foreground=TEXT_COLOR,
+        bordercolor=INPUT_BORDER,
+        lightcolor=INPUT_BORDER,
+        darkcolor=INPUT_BORDER,
+        insertcolor=TEXT_COLOR,
+        relief="solid",
+    )
+
+    style.configure(
+        "TCombobox",
+        fieldbackground=INPUT_BG,
+        background=INPUT_BG,
+        foreground=TEXT_COLOR,
+        bordercolor=INPUT_BORDER,
+        lightcolor=INPUT_BORDER,
+        darkcolor=INPUT_BORDER,
+        arrowcolor=TEXT_COLOR,
+    )
+    style.map(
+        "TCombobox",
+        fieldbackground=[("readonly", INPUT_BG), ("!disabled", INPUT_BG)],
+        foreground=[("readonly", TEXT_COLOR), ("!disabled", TEXT_COLOR)],
+        bordercolor=[("focus", ACCENT_COLOR), ("!focus", INPUT_BORDER)],
+        arrowcolor=[("disabled", MUTED_COLOR), ("!disabled", TEXT_COLOR)],
+    )
+    combobox_popup_options = {
+        "background": INPUT_BG,
+        "foreground": TEXT_COLOR,
+        "selectBackground": ACCENT_COLOR,
+        "selectForeground": "#ffffff",
+        "borderColor": BORDER_COLOR,
+    }
+    for key, value in combobox_popup_options.items():
+        root.option_add(f"*TCombobox*Listbox.{key}", value)
+        root.option_add(f"*Combobox*Listbox.{key}", value)
+
+    style.configure(
         "Primary.TButton",
         font=(BODY_FONT[0], 12, "bold"),
         foreground="#ffffff",
@@ -452,7 +589,7 @@ def apply_styles(root: tk.Tk):
     )
     style.map(
         "Primary.TButton",
-        background=[("active", "#0a84ff"), ("pressed", "#0060df")],
+        background=[("active", ACCENT_COLOR), ("pressed", PRIMARY_PRESSED)],
         foreground=[("disabled", "#d1d1d6")],
     )
 
@@ -467,8 +604,21 @@ def apply_styles(root: tk.Tk):
     )
     style.map(
         "Secondary.TButton",
-        background=[("active", "#f0f4ff")],
+        background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
         foreground=[("disabled", "#c7c7cc")],
+    )
+
+    style.configure(
+        "ThemeToggle.TButton",
+        padding=(6, 6),
+        relief="solid",
+        borderwidth=1,
+        background=CARD_BG,
+        foreground=ACCENT_COLOR,
+    )
+    style.map(
+        "ThemeToggle.TButton",
+        background=[("active", HOVER_BG), ("pressed", PRESSED_BG)],
     )
 
     style.configure(
@@ -494,21 +644,23 @@ def refresh_solution_rows(rows):
             widget.configure(fg=MUTED_COLOR if widget.cget("text") == "—" else TEXT_COLOR)
 
 
-def configure_log_widget(log_text: tk.Text):
-    log_text.configure(
+def configure_log_canvas(canvas: tk.Canvas):
+    canvas.configure(
         bg=CARD_BG,
-        fg=TEXT_COLOR,
         highlightbackground=BORDER_COLOR,
         highlightcolor=BORDER_COLOR,
     )
-    log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
-    log_text.tag_configure("meta", foreground=MUTED_COLOR)
-    log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
-    log_text.tag_configure("subheader", font=(MONO_FONT[0], 10, "bold"), foreground=MUTED_COLOR)
-    log_text.tag_configure("divider", foreground=BORDER_COLOR)
 
 
-def apply_theme(root: tk.Tk, theme_name: str, *, solution_tables, log_text: tk.Text):
+def apply_theme(
+    root: tk.Tk,
+    theme_name: str,
+    *,
+    solution_tables,
+    log_body: ttk.Frame,
+    log_entries,
+    log_equipment_filter,
+):
     set_theme(theme_name)
     root.configure(bg=APP_BG)
     apply_styles(root)
@@ -516,7 +668,8 @@ def apply_theme(root: tk.Tk, theme_name: str, *, solution_tables, log_text: tk.T
     for rows in solution_tables:
         refresh_solution_rows(rows)
 
-    configure_log_widget(log_text)
+    configure_log_canvas(log_body.master)
+    render_log(log_body, log_entries, log_equipment_filter.get())
 
 
 def build_solution_table(parent):
@@ -647,22 +800,10 @@ def build_gui():
     # PNG 아이콘 로드
     try:
         root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
-        root.dark_icon_base  = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
-        # hover용 확대 아이콘 (≈1.2배, 정수 배율 근사)
-        def make_hover(img: tk.PhotoImage):
-            # 6/5 ≈ 1.2배
-            return img.zoom(6, 6).subsample(5, 5)
-        root.light_icon_hover = make_hover(root.light_icon_base)
-        root.dark_icon_hover  = make_hover(root.dark_icon_base)
+        root.dark_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
     except Exception as e:
         messagebox.showerror("아이콘 로드 오류", f"테마 아이콘을 불러오지 못했습니다.\n{e}")
         root.light_icon_base = root.dark_icon_base = None
-        root.light_icon_hover = root.dark_icon_hover = None
-
-    # 버튼 스타일(hover 시 border 색상 변경 비슷한 느낌)
-    style = ttk.Style()
-    style.configure("ThemeToggle.TButton", padding=(6, 6), relief="solid", borderwidth=1, background=CARD_BG, foreground=ACCENT_COLOR)
-    style.map("ThemeToggle.TButton", background=[("active", "#e6f0ff")])
 
     theme_toggle = ttk.Button(
         bottom_bar,
@@ -677,7 +818,7 @@ def build_gui():
     log_toggle_button.grid(row=0, column=2, sticky="e")
 
     log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
-    log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
+    log_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=12)
     log_frame.grid_remove()
 
     log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, 6))
@@ -697,39 +838,43 @@ def build_gui():
         font=BODY_FONT,
     )
     equipment_select.grid(row=0, column=1, sticky="e")
-    log_text = tk.Text(
+    log_canvas = tk.Canvas(
         log_frame,
-        width=66,
-        height=22,
-        font=MONO_FONT,
-        relief="flat",
-        borderwidth=1,
+        height=380,
         highlightthickness=1,
-        wrap="none",
-        padx=14,
-        pady=10,
+        borderwidth=0,
     )
-    configure_log_widget(log_text)
-    log_text.configure(spacing1=2, spacing3=6)
-    log_text.grid(row=1, column=0, sticky="nsew")
-    log_text.configure(state="disabled")
-    log_text.tag_configure("row", spacing1=1, spacing3=1)
-    y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
+    configure_log_canvas(log_canvas)
+    log_canvas.grid(row=1, column=0, sticky="nsew")
+
+    log_body = ttk.Frame(log_canvas, style="Card.TFrame")
+    log_window = log_canvas.create_window((0, 0), window=log_body, anchor="nw")
+
+    y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_canvas.yview)
     y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
-    log_text.configure(yscrollcommand=y_scroll.set)
+    log_canvas.configure(yscrollcommand=y_scroll.set)
+
+    def _on_frame_configure(event):
+        log_canvas.configure(scrollregion=log_canvas.bbox("all"))
+
+    def _on_canvas_configure(event):
+        log_canvas.itemconfigure(log_window, width=event.width)
+
+    log_body.bind("<Configure>", _on_frame_configure)
+    log_canvas.bind("<Configure>", _on_canvas_configure)
 
     def _on_mousewheel(event):
-        log_text.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        log_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         return "break"
 
     def _on_linux_scroll(event):
         direction = -1 if event.num == 4 else 1
-        log_text.yview_scroll(direction, "units")
+        log_canvas.yview_scroll(direction, "units")
         return "break"
 
-    log_text.bind("<MouseWheel>", _on_mousewheel)
-    log_text.bind("<Button-4>", _on_linux_scroll)
-    log_text.bind("<Button-5>", _on_linux_scroll)
+    log_canvas.bind("<MouseWheel>", _on_mousewheel)
+    log_canvas.bind("<Button-4>", _on_linux_scroll)
+    log_canvas.bind("<Button-5>", _on_linux_scroll)
     log_frame.columnconfigure(0, weight=1)
     log_frame.columnconfigure(1, weight=0)
     log_frame.rowconfigure(1, weight=1)
@@ -737,7 +882,9 @@ def build_gui():
     log_entries = []
 
     def _refresh_log(event=None):
-        render_log(log_text, log_entries, log_equipment_filter.get())
+        render_log(log_body, log_entries, log_equipment_filter.get())
+
+    render_log(log_body, log_entries, log_equipment_filter.get())
 
     equipment_select.bind("<<ComboboxSelected>>", _refresh_log)
 
@@ -761,33 +908,25 @@ def build_gui():
             root,
             new_theme,
             solution_tables=[low_rows, high_rows],
-            log_text=log_text,
+            log_body=log_body,
+            log_entries=log_entries,
+            log_equipment_filter=log_equipment_filter,
         )
-        # 현재 상태에 맞게 아이콘 갱신(hover 상태 고려)
-        _apply_toggle_icon(new_theme, hover=False)
+        # 현재 상태에 맞게 아이콘 갱신
+        _apply_toggle_icon(new_theme)
 
     theme_toggle.configure(command=toggle_theme)
 
-    def _apply_toggle_icon(mode: str, hover: bool):
+    def _apply_toggle_icon(mode: str):
         if mode == "light":
-            img = (root.light_icon_hover if hover else root.light_icon_base) if root.light_icon_base else None
+            img = root.light_icon_base if root.light_icon_base else None
             theme_toggle.configure(image=img, text="" if img else "🌞")
         else:
-            img = (root.dark_icon_hover if hover else root.dark_icon_base) if root.dark_icon_base else None
+            img = root.dark_icon_base if root.dark_icon_base else None
             theme_toggle.configure(image=img, text="" if img else "🌙")
 
-    # hover 이벤트: 색/확대 근사
-    def _on_enter(_e=None):
-        _apply_toggle_icon(theme_var.get(), hover=True)
-
-    def _on_leave(_e=None):
-        _apply_toggle_icon(theme_var.get(), hover=False)
-
-    theme_toggle.bind("<Enter>", _on_enter)
-    theme_toggle.bind("<Leave>", _on_leave)
-
     root.columnconfigure(0, weight=1)
-    root.columnconfigure(1, weight=0)
+    root.columnconfigure(1, weight=1)
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
     main.rowconfigure(3, weight=1)
@@ -805,7 +944,7 @@ def build_gui():
             distance_entry,
             log_entries,
             log_equipment_filter,
-            log_text,
+            log_body,
         )
     )
 
