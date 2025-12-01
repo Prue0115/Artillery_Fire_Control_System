@@ -818,7 +818,7 @@ def build_gui():
     log_toggle_button.grid(row=0, column=2, sticky="e")
 
     log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
-    log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
+    log_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=12)
     log_frame.grid_remove()
 
     log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, 6))
@@ -925,8 +925,8 @@ def build_gui():
             img = root.dark_icon_base if root.dark_icon_base else None
             theme_toggle.configure(image=img, text="" if img else "🌙")
 
-    root.columnconfigure(0, weight=1)
-    root.columnconfigure(1, weight=0)
+    root.columnconfigure(0, weight=2)
+    root.columnconfigure(1, weight=1)
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
     main.rowconfigure(3, weight=1)
