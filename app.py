@@ -7,11 +7,45 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 
-APP_BG = "#f5f5f7"
-CARD_BG = "#ffffff"
-TEXT_COLOR = "#1d1d1f"
-MUTED_COLOR = "#6e6e73"
-ACCENT_COLOR = "#007aff"
+THEMES = {
+    "light": {
+        "APP_BG": "#f5f5f7",
+        "CARD_BG": "#ffffff",
+        "TEXT_COLOR": "#1d1d1f",
+        "MUTED_COLOR": "#6e6e73",
+        "ACCENT_COLOR": "#007aff",
+        "BORDER_COLOR": "#e5e5ea",
+    },
+    "dark": {
+        "APP_BG": "#1c1c1e",
+        "CARD_BG": "#2c2c2e",
+        "TEXT_COLOR": "#f2f2f7",
+        "MUTED_COLOR": "#8e8e93",
+        "ACCENT_COLOR": "#0a84ff",
+        "BORDER_COLOR": "#3a3a3c",
+    },
+}
+
+APP_BG = ""
+CARD_BG = ""
+TEXT_COLOR = ""
+MUTED_COLOR = ""
+ACCENT_COLOR = ""
+BORDER_COLOR = ""
+
+
+def set_theme(theme_name: str):
+    theme = THEMES[theme_name]
+    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    APP_BG = theme["APP_BG"]
+    CARD_BG = theme["CARD_BG"]
+    TEXT_COLOR = theme["TEXT_COLOR"]
+    MUTED_COLOR = theme["MUTED_COLOR"]
+    ACCENT_COLOR = theme["ACCENT_COLOR"]
+    BORDER_COLOR = theme["BORDER_COLOR"]
+
+
+set_theme("light")
 TITLE_FONT = ("SF Pro Display", 18, "bold")
 BODY_FONT = ("SF Pro Text", 12)
 MONO_FONT = ("SF Mono", 12)
@@ -449,6 +483,39 @@ def apply_styles(root: tk.Tk):
     )
 
 
+def refresh_solution_rows(rows):
+    for row in rows:
+        for key in ("ch", "mill", "eta"):
+            widget = row[key]
+            widget.configure(bg=CARD_BG)
+            widget.configure(fg=MUTED_COLOR if widget.cget("text") == "—" else TEXT_COLOR)
+
+
+def configure_log_widget(log_text: tk.Text):
+    log_text.configure(
+        bg=CARD_BG,
+        fg=TEXT_COLOR,
+        highlightbackground=BORDER_COLOR,
+        highlightcolor=BORDER_COLOR,
+    )
+    log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
+    log_text.tag_configure("meta", foreground=MUTED_COLOR)
+    log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
+    log_text.tag_configure("subheader", font=(MONO_FONT[0], 10, "bold"), foreground=MUTED_COLOR)
+    log_text.tag_configure("divider", foreground=BORDER_COLOR)
+
+
+def apply_theme(root: tk.Tk, theme_name: str, *, solution_tables, log_text: tk.Text):
+    set_theme(theme_name)
+    root.configure(bg=APP_BG)
+    apply_styles(root)
+
+    for rows in solution_tables:
+        refresh_solution_rows(rows)
+
+    configure_log_widget(log_text)
+
+
 def build_solution_table(parent):
     table = ttk.Frame(parent, style="Card.TFrame")
     table.columnconfigure(0, weight=1)
@@ -492,6 +559,7 @@ def build_gui():
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
+    header.columnconfigure(2, weight=0)
     title = ttk.Label(header, text="AFCS v1.1", font=TITLE_FONT, foreground=TEXT_COLOR, background=APP_BG)
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
@@ -514,6 +582,10 @@ def build_gui():
         font=BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
+
+    theme_var = tk.StringVar(value="light")
+    theme_toggle = ttk.Button(header, text="다크 모드", style="Secondary.TButton")
+    theme_toggle.grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")
@@ -606,27 +678,19 @@ def build_gui():
         log_frame,
         width=66,
         height=22,
-        bg=CARD_BG,
-        fg=TEXT_COLOR,
         font=MONO_FONT,
         relief="flat",
         borderwidth=1,
         highlightthickness=1,
-        highlightbackground="#e5e5ea",
-        highlightcolor="#e5e5ea",
         wrap="none",
         padx=14,
         pady=10,
     )
+    configure_log_widget(log_text)
     log_text.configure(spacing1=2, spacing3=6)
     log_text.grid(row=1, column=0, sticky="nsew")
     log_text.configure(state="disabled")
-    log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
-    log_text.tag_configure("meta", foreground=MUTED_COLOR)
-    log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
-    log_text.tag_configure("subheader", font=(MONO_FONT[0], 10, "bold"), foreground=MUTED_COLOR)
     log_text.tag_configure("row", spacing1=1, spacing3=1)
-    log_text.tag_configure("divider", foreground="#d2d2d7")
     y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
     y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
     log_text.configure(yscrollcommand=y_scroll.set)
@@ -666,6 +730,19 @@ def build_gui():
             log_toggle_button.configure(text="기록")
 
     log_toggle_button.configure(command=toggle_log)
+
+    def toggle_theme():
+        new_theme = "dark" if theme_var.get() == "light" else "light"
+        theme_var.set(new_theme)
+        apply_theme(
+            root,
+            new_theme,
+            solution_tables=[low_rows, high_rows],
+            log_text=log_text,
+        )
+        theme_toggle.configure(text="라이트 모드" if new_theme == "dark" else "다크 모드")
+
+    theme_toggle.configure(command=toggle_theme)
 
     root.columnconfigure(0, weight=1)
     root.columnconfigure(1, weight=0)
