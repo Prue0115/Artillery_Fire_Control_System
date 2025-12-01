@@ -560,7 +560,6 @@ def build_gui():
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
-    header.columnconfigure(2, weight=0)
     title = ttk.Label(header, text="AFCS v1.1", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
@@ -583,10 +582,6 @@ def build_gui():
         font=BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
-
-    theme_var = tk.StringVar(value="light")
-    theme_toggle = ttk.Button(header, text="다크 모드", style="Secondary.TButton")
-    theme_toggle.grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")
@@ -641,11 +636,15 @@ def build_gui():
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
+    theme_var = tk.StringVar(value="light")
+
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
+    theme_toggle = ttk.Button(bottom_bar, text="🌞", style="Secondary.TButton")
+    theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
-    log_toggle_button.grid(row=0, column=1, sticky="e")
+    log_toggle_button.grid(row=0, column=2, sticky="e")
 
     log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
     log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
@@ -734,7 +733,7 @@ def build_gui():
             solution_tables=[low_rows, high_rows],
             log_text=log_text,
         )
-        theme_toggle.configure(text="라이트 모드" if new_theme == "dark" else "다크 모드")
+        theme_toggle.configure(text="🌞" if new_theme == "light" else "🌙")
 
     theme_toggle.configure(command=toggle_theme)
 
