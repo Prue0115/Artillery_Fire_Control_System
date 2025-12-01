@@ -245,7 +245,7 @@ def log_calculation(
         f"시간 {timestamp}",
         header,
         "LOW                                     HIGH",
-        "CH    MILL     ETA                 CH    MILL     ETA",
+        "CH   MILL   ETA                         CH   MILL   ETA",
     ]
 
     row_count = max(len(low_solutions), len(high_solutions), 1)
@@ -255,12 +255,10 @@ def log_calculation(
 
         def fmt(solution):
             if solution:
-                return f"{solution['charge']:>2} {solution['mill']:>8.2f} {solution['eta']:>6.1f}"
+                return f"{solution['charge']:>2} {solution['mill']:>7.2f} {solution['eta']:>6.1f}"
             return "—".ljust(17)
 
-        lines.append(f"{fmt(low):<24}{fmt(high)}")
-
-    lines.append("-" * 60)
+        lines.append(f"{fmt(low):<33}{fmt(high)}")
 
     log_text.configure(state="normal")
     log_text.insert("end", "\n".join(lines) + "\n")
@@ -491,7 +489,6 @@ def build_gui():
     button_row = ttk.Frame(main, style="Main.TFrame")
     button_row.grid(row=2, column=0, sticky="ew", pady=(12, 0))
     button_row.columnconfigure(0, weight=1)
-    button_row.columnconfigure(1, weight=0)
 
     calculate_button = ttk.Button(
         button_row,
@@ -500,9 +497,6 @@ def build_gui():
         command=lambda: None,
     )
     calculate_button.grid(row=0, column=0, sticky="ew")
-
-    log_toggle_button = ttk.Button(button_row, text="기록", style="Secondary.TButton")
-    log_toggle_button.grid(row=0, column=1, sticky="e", padx=(12, 0))
 
     results_card = ttk.Frame(main, style="Card.TFrame", padding=16)
     results_card.grid(row=3, column=0, sticky="ew", pady=(16, 0))
@@ -522,6 +516,12 @@ def build_gui():
 
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
+
+    bottom_bar = ttk.Frame(main, style="Main.TFrame")
+    bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
+    bottom_bar.columnconfigure(0, weight=1)
+    log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
+    log_toggle_button.grid(row=0, column=1, sticky="e")
 
     log_frame = ttk.Frame(root, style="Card.TFrame", padding=12)
     log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
@@ -565,6 +565,7 @@ def build_gui():
     root.columnconfigure(1, weight=0)
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
+    main.rowconfigure(3, weight=1)
 
     calculate_button.configure(
         command=lambda: calculate_and_display(
