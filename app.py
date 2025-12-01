@@ -229,8 +229,58 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
             row["eta"].config(text="—", fg=MUTED_COLOR)
 
 
+def _format_log_entry(entry):
+    timestamp = entry["timestamp"].strftime("%H:%M")
+    meta_line_1 = f"나의 고도(m) : {entry['my_alt']:g} | 목표물 고도(m) : {entry['target_alt']:g}"
+    meta_line_2 = f"거리(m) : {entry['distance']:g} | 장비 : {entry['system']}"
+
+    lines = [
+        (f"시간 {timestamp}\n", "time"),
+        (f"{meta_line_1}\n", "meta"),
+        (f"{meta_line_2}\n", "meta"),
+        (f"{'LOW':<32}HIGH\n", "header"),
+        (f"{'CH':>3} {'MILL':>8} {'ETA':>6}   {'CH':>3} {'MILL':>8} {'ETA':>6}\n", "header"),
+    ]
+
+    row_count = max(len(entry["low"]), len(entry["high"]), 1)
+    for idx in range(row_count):
+        low = entry["low"][idx] if idx < len(entry["low"]) else None
+        high = entry["high"][idx] if idx < len(entry["high"]) else None
+
+        def fmt(solution):
+            if solution:
+                return f"{solution['charge']:>3} {solution['mill']:>8.2f} {solution['eta']:>6.1f}"
+            return f"{'—':>3} {'—':>8} {'—':>6}"
+
+        lines.append((f"{fmt(low):<24}   {fmt(high)}\n", None))
+
+    return lines
+
+
+def render_log(log_text: tk.Text, entries, sort_mode: str):
+    log_text.configure(state="normal")
+    log_text.delete("1.0", "end")
+
+    if sort_mode == "장비별":
+        ordered_entries = sorted(entries, key=lambda e: (e["system"], e["timestamp"]))
+    else:
+        ordered_entries = entries
+
+    for idx, entry in enumerate(ordered_entries):
+        if idx > 0:
+            log_text.insert("end", "\n", ("divider",))
+            log_text.insert("end", "─" * 66 + "\n", ("divider",))
+        for chunk, tag in _format_log_entry(entry):
+            log_text.insert("end", chunk, (tag,) if tag else ())
+
+    log_text.see("end")
+    log_text.configure(state="disabled")
+
+
 def log_calculation(
     log_text: tk.Text,
+    log_entries: list,
+    sort_mode: tk.StringVar,
     my_alt: float,
     target_alt: float,
     distance: float,
@@ -238,38 +288,18 @@ def log_calculation(
     low_solutions,
     high_solutions,
 ):
-    timestamp = datetime.now().strftime("%H:%M")
-    meta_line_1 = f"나의 고도(m) : {my_alt:g} | 목표물 고도(m) : {target_alt:g}"
-    meta_line_2 = f"거리(m) : {distance:g} | 장비 : {system}"
-
-    lines = [
-        (f"시간 {timestamp}\n", "time"),
-        (f"{meta_line_1}\n", "meta"),
-        (f"{meta_line_2}\n", "meta"),
-        ("LOW                                     HIGH\n", "header"),
-        ("CH   MILL   ETA                         CH   MILL   ETA\n", "header"),
-    ]
-
-    row_count = max(len(low_solutions), len(high_solutions), 1)
-    for idx in range(row_count):
-        low = low_solutions[idx] if idx < len(low_solutions) else None
-        high = high_solutions[idx] if idx < len(high_solutions) else None
-
-        def fmt(solution):
-            if solution:
-                return f"{solution['charge']:>2} {solution['mill']:>7.2f} {solution['eta']:>6.1f}"
-            return "—".ljust(17)
-
-        lines.append((f"{fmt(low):<33}{fmt(high)}\n", None))
-
-    log_text.configure(state="normal")
-    if log_text.index("end-1c") != "1.0":
-        log_text.insert("end", "\n", ("divider",))
-        log_text.insert("end", "─" * 66 + "\n", ("divider",))
-    for chunk, tag in lines:
-        log_text.insert("end", chunk, (tag,) if tag else ())
-    log_text.see("end")
-    log_text.configure(state="disabled")
+    log_entries.append(
+        {
+            "timestamp": datetime.now(),
+            "my_alt": my_alt,
+            "target_alt": target_alt,
+            "distance": distance,
+            "system": system,
+            "low": low_solutions,
+            "high": high_solutions,
+        }
+    )
+    render_log(log_text, log_entries, sort_mode.get())
 
 
 def calculate_and_display(
@@ -282,6 +312,8 @@ def calculate_and_display(
     my_altitude_entry,
     target_altitude_entry,
     distance_entry,
+    log_entries,
+    log_sort_mode,
     log_text,
 ):
     try:
@@ -336,6 +368,8 @@ def calculate_and_display(
 
     log_calculation(
         log_text,
+        log_entries,
+        log_sort_mode,
         my_alt,
         target_alt,
         distance,
@@ -532,11 +566,31 @@ def build_gui():
     log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=12)
     log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
     log_frame.grid_remove()
+
+    log_header = ttk.Frame(log_frame, style="Card.TFrame")
+    log_header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+    log_header.columnconfigure(0, weight=1)
+    log_header.columnconfigure(1, weight=0)
+
     ttk.Label(
-        log_frame,
+        log_header,
         text="최근 계산 결과가 순서대로 표시됩니다",
         style="Muted.TLabel",
-    ).grid(row=0, column=0, sticky="w", pady=(0, 6))
+    ).grid(row=0, column=0, sticky="w")
+
+    sort_wrap = ttk.Frame(log_header, style="Card.TFrame")
+    sort_wrap.grid(row=0, column=1, sticky="e")
+    ttk.Label(sort_wrap, text="정렬", style="Muted.TLabel").grid(row=0, column=0, sticky="e", padx=(0, 6))
+    log_sort_mode = tk.StringVar(value="시간순")
+    sort_select = ttk.Combobox(
+        sort_wrap,
+        textvariable=log_sort_mode,
+        values=["시간순", "장비별"],
+        state="readonly",
+        width=8,
+        font=BODY_FONT,
+    )
+    sort_select.grid(row=0, column=1, sticky="e")
     log_text = tk.Text(
         log_frame,
         width=66,
@@ -579,6 +633,13 @@ def build_gui():
     log_frame.columnconfigure(1, weight=0)
     log_frame.rowconfigure(1, weight=1)
 
+    log_entries = []
+
+    def _on_sort_change(event=None):
+        render_log(log_text, log_entries, log_sort_mode.get())
+
+    sort_select.bind("<<ComboboxSelected>>", _on_sort_change)
+
     log_visible = {"value": False}
 
     def toggle_log():
@@ -609,6 +670,8 @@ def build_gui():
             my_altitude_entry,
             target_altitude_entry,
             distance_entry,
+            log_entries,
+            log_sort_mode,
             log_text,
         )
     )
