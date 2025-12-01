@@ -300,12 +300,18 @@ def _format_log_entry(entry):
         f"Distance {entry['distance']:>6g}m"
     )
 
+    low_block_width = 41
+    low_block_header = f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}"
     lines = [
         (f"{header_line}\n", "time"),
         (f"{meta_line}\n", "meta"),
         ("┄" * 62 + "\n", "divider"),
-        (f"{'LOW':<28}{'HIGH'}\n", "header"),
-        (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
+        (f"{'LOW':<{low_block_width}}HIGH\n", "header"),
+        (
+            f"{low_block_header:<{low_block_width}}"
+            f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}\n",
+            "subheader",
+        ),
     ]
 
     low_sorted = sorted(entry["low"], key=lambda s: s["charge"])
@@ -330,7 +336,8 @@ def _format_log_entry(entry):
                 )
             return f"{'—':>3}   {'—':>8}   {'—':>5}"
 
-        lines.append((f"{fmt(low)}    {fmt(high)}\n", "row"))
+        row_line = f"{fmt(low):<{low_block_width}}{fmt(high)}\n"
+        lines.append((row_line, "row"))
 
     lines.append(("\n", None))
     return lines
