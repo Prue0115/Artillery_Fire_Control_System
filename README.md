@@ -5,15 +5,27 @@
 macOS 네이티브 다이얼로그(osascript)를 활용한 깔끔한 GUI 인스톨러(`installer_gui`)도 함께 제공하여 설치 경로 선택, 시작 화면/바탕화면 바로가기 생성 여부를 손쉽게 지정할 수 있습니다. 다른 OS에서는 동일 흐름을 콘솔 프롬프트로 안내합니다.
 
 ## 빌드
+### 리눅스/맥 (기본)
 ```bash
+# CLI + 업데이트 도구 + GUI 인스톨러
+make
+
+# 각 실행 파일을 개별로 빌드하려면 필요한 소스만 지정
 gcc -o cli_calculator cli_calculator.c
-
-// 버전 표기 및 업데이트 체크 유틸리티 빌드
 gcc -o auto_updater auto_updater.c gui_dialogs.c
-
-# GUI 인스톨러 빌드 (macOS 우선, auto_updater도 함께 포함)
 gcc -o installer_gui installer_gui.c gui_dialogs.c
 ```
+
+### 윈도우 EXE (MinGW-w64 크로스 컴파일)
+```bash
+# MinGW 툴체인이 설치돼 있다면 다음으로 Windows용 exe 3종을 dist/windows/ 아래 생성합니다.
+make windows MINGW_PREFIX=x86_64-w64-mingw32
+
+# GitHub Release에 바로 업로드할 zip까지 묶으려면
+make zip-windows MINGW_PREFIX=x86_64-w64-mingw32
+```
+`dist/windows/` 안에는 `cli_calculator.exe`, `auto_updater.exe`, `installer_gui.exe`와 `rangeTables/` 폴더가 함께 담겨
+즉시 배포 가능한 상태가 됩니다.
 
 ## 사용 방법
 ```bash
@@ -38,6 +50,9 @@ gcc -o installer_gui installer_gui.c gui_dialogs.c
 
 # GUI 인스톨러로 설치한 경우 설치 경로에 auto_updater도 함께 배포되므로 다음처럼 호출할 수 있습니다.
 ~/Applications/ArtilleryCalculator/auto_updater --manifest https://example.com/update.json --binary ~/Applications/ArtilleryCalculator/cli_calculator
+
+# (Windows) 설치 경로에서 업데이트 실행
+C:\\Users\\you\\ArtilleryCalculator\\auto_updater.exe --manifest https://example.com/update.json --binary C:\\Users\\you\\ArtilleryCalculator\\cli_calculator.exe
 ```
 
 ### GUI 인스톨러 사용 흐름 (macOS 권장)
