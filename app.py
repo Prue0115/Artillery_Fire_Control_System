@@ -1,6 +1,7 @@
 import csv
 import math
 from bisect import bisect_left
+from datetime import datetime
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -228,6 +229,45 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
             row["eta"].config(text="—", fg=MUTED_COLOR)
 
 
+def log_calculation(
+    log_text: tk.Text,
+    my_alt: float,
+    target_alt: float,
+    distance: float,
+    system: str,
+    low_solutions,
+    high_solutions,
+):
+    timestamp = datetime.now().strftime("%H:%M")
+    header = f"나의 고도(m) : {my_alt:g} | 목표물 고도(m) : {target_alt:g} | 거리(m) : {distance:g} | 장비 : {system}"
+
+    lines = [
+        f"시간 {timestamp}",
+        header,
+        "LOW                                     HIGH",
+        "CH    MILL     ETA                 CH    MILL     ETA",
+    ]
+
+    row_count = max(len(low_solutions), len(high_solutions), 1)
+    for idx in range(row_count):
+        low = low_solutions[idx] if idx < len(low_solutions) else None
+        high = high_solutions[idx] if idx < len(high_solutions) else None
+
+        def fmt(solution):
+            if solution:
+                return f"{solution['charge']:>2} {solution['mill']:>8.2f} {solution['eta']:>6.1f}"
+            return "—".ljust(17)
+
+        lines.append(f"{fmt(low):<24}{fmt(high)}")
+
+    lines.append("-" * 60)
+
+    log_text.configure(state="normal")
+    log_text.insert("end", "\n".join(lines) + "\n")
+    log_text.see("end")
+    log_text.configure(state="disabled")
+
+
 def calculate_and_display(
     system_var,
     low_rows,
@@ -238,6 +278,7 @@ def calculate_and_display(
     my_altitude_entry,
     target_altitude_entry,
     distance_entry,
+    log_text,
 ):
     try:
         my_alt = float(my_altitude_entry.get())
@@ -288,6 +329,16 @@ def calculate_and_display(
     update_solution_table(low_rows, low_status, low_solutions, message=low_message)
     update_solution_table(high_rows, high_status, high_solutions, message=high_message)
     delta_label.config(text=f"고도 차이(사수-목표): {altitude_delta:+.1f} m")
+
+    log_calculation(
+        log_text,
+        my_alt,
+        target_alt,
+        distance,
+        system,
+        low_solutions,
+        high_solutions,
+    )
 
 
 def apply_styles(root: tk.Tk):
@@ -440,6 +491,7 @@ def build_gui():
     button_row = ttk.Frame(main, style="Main.TFrame")
     button_row.grid(row=2, column=0, sticky="ew", pady=(12, 0))
     button_row.columnconfigure(0, weight=1)
+    button_row.columnconfigure(1, weight=0)
 
     calculate_button = ttk.Button(
         button_row,
@@ -448,6 +500,9 @@ def build_gui():
         command=lambda: None,
     )
     calculate_button.grid(row=0, column=0, sticky="ew")
+
+    log_toggle_button = ttk.Button(button_row, text="기록", style="Secondary.TButton")
+    log_toggle_button.grid(row=0, column=1, sticky="e", padx=(12, 0))
 
     results_card = ttk.Frame(main, style="Card.TFrame", padding=16)
     results_card.grid(row=3, column=0, sticky="ew", pady=(16, 0))
@@ -468,7 +523,46 @@ def build_gui():
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
+    log_frame = ttk.Frame(root, style="Card.TFrame", padding=12)
+    log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
+    log_frame.grid_remove()
+    ttk.Label(log_frame, text="기록", style="CardBody.TLabel", font=(BODY_FONT[0], 12, "bold")).grid(
+        row=0, column=0, sticky="w", pady=(0, 8)
+    )
+    log_text = tk.Text(
+        log_frame,
+        width=48,
+        height=20,
+        bg=CARD_BG,
+        fg=TEXT_COLOR,
+        font=MONO_FONT,
+        relief="flat",
+        borderwidth=0,
+        wrap="none",
+    )
+    log_text.grid(row=1, column=0, sticky="nsew")
+    log_text.configure(state="disabled")
+    log_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
+    log_scroll.grid(row=1, column=1, sticky="ns")
+    log_text.configure(yscrollcommand=log_scroll.set)
+    log_frame.columnconfigure(0, weight=1)
+    log_frame.rowconfigure(1, weight=1)
+
+    log_visible = {"value": False}
+
+    def toggle_log():
+        log_visible["value"] = not log_visible["value"]
+        if log_visible["value"]:
+            log_frame.grid()
+            log_toggle_button.configure(text="기록 닫기")
+        else:
+            log_frame.grid_remove()
+            log_toggle_button.configure(text="기록")
+
+    log_toggle_button.configure(command=toggle_log)
+
     root.columnconfigure(0, weight=1)
+    root.columnconfigure(1, weight=0)
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
 
@@ -483,6 +577,7 @@ def build_gui():
             my_altitude_entry,
             target_altitude_entry,
             distance_entry,
+            log_text,
         )
     )
 
