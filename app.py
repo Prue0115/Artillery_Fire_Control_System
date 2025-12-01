@@ -489,6 +489,10 @@ def apply_styles(root: tk.Tk):
         darkcolor=INPUT_BORDER,
         arrowcolor=TEXT_COLOR,
     )
+    root.option_add("*TCombobox*Listbox.background", INPUT_BG)
+    root.option_add("*TCombobox*Listbox.foreground", TEXT_COLOR)
+    root.option_add("*TCombobox*Listbox.selectBackground", ACCENT_COLOR)
+    root.option_add("*TCombobox*Listbox.selectForeground", "#ffffff")
 
     style.configure(
         "Primary.TButton",
