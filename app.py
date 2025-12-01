@@ -305,13 +305,13 @@ def _format_log_entry(entry):
 
     def _column_header():
         return (
-            f"{'CH':>{CH_WIDTH}} "
-            f"{'MILL':>{MILL_WIDTH}} "
-            f"{'ETA':>{ETA_WIDTH}}"
+            f"{'CH':<{CH_WIDTH}} "
+            f"{'MILL':<{MILL_WIDTH}} "
+            f"{'ETA':<{ETA_WIDTH}}"
         )
 
     low_block_header = _column_header()
-    low_block_width = len(low_block_header) + 6
+    low_block_width = CH_WIDTH + MILL_WIDTH + ETA_WIDTH + 6
     lines = [
         (f"{header_line}\n", "time"),
         (f"{meta_line}\n", "meta"),
@@ -337,14 +337,14 @@ def _format_log_entry(entry):
         def fmt(solution):
             if solution:
                 return (
-                    f"{solution['charge']:>{CH_WIDTH}} "
-                    f"{solution['mill']:>{MILL_WIDTH}.2f} "
-                    f"{solution['eta']:>{ETA_WIDTH}.1f}"
+                    f"{solution['charge']:<{CH_WIDTH}} "
+                    f"{solution['mill']:<{MILL_WIDTH}.2f} "
+                    f"{solution['eta']:<{ETA_WIDTH}.1f}"
                 )
             return (
-                f"{'—':>{CH_WIDTH}} "
-                f"{'—':>{MILL_WIDTH}} "
-                f"{'—':>{ETA_WIDTH}}"
+                f"{'—':<{CH_WIDTH}} "
+                f"{'—':<{MILL_WIDTH}} "
+                f"{'—':<{ETA_WIDTH}}"
             )
 
         row_line = f"{fmt(low):<{low_block_width}}{fmt(high)}\n"
