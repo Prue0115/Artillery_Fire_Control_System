@@ -892,8 +892,10 @@ def build_gui():
 
     def _sync_layout():
         if log_visible["value"]:
+            log_frame.update_idletasks()
+            desired_width = log_frame.winfo_reqwidth()
             root.columnconfigure(0, weight=1)
-            root.columnconfigure(1, weight=1, minsize=log_frame.winfo_reqwidth())
+            root.columnconfigure(1, weight=0, minsize=desired_width)
         else:
             root.columnconfigure(0, weight=1)
             root.columnconfigure(1, weight=0, minsize=0)
