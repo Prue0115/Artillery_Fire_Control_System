@@ -233,13 +233,15 @@ def _format_log_entry(entry):
     timestamp = entry["timestamp"].strftime("%H:%M")
 
     header_line = f"시간 {timestamp} · 장비 {entry['system']}"
-    meta_line_1 = f"나의 고도 {entry['my_alt']:g}m    목표물 고도 {entry['target_alt']:g}m"
-    meta_line_2 = f"거리 {entry['distance']:g}m"
+    meta_line = (
+        f"나의 고도 {entry['my_alt']:>5g}m  |  "
+        f"목표물 고도 {entry['target_alt']:>5g}m  |  "
+        f"거리 {entry['distance']:>6g}m"
+    )
 
     lines = [
         (f"{header_line}\n", "time"),
-        (f"{meta_line_1}\n", "meta"),
-        (f"{meta_line_2}\n", "meta"),
+        (f"{meta_line}\n", "meta"),
         ("┄" * 62 + "\n", "divider"),
         (f"{'LOW':<28}{'HIGH'}\n", "header"),
         (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
@@ -261,7 +263,7 @@ def _format_log_entry(entry):
     return lines
 
 
-def render_log(log_text: tk.Text, entries, sort_mode: str, equipment_filter: str):
+def render_log(log_text: tk.Text, entries, equipment_filter: str):
     log_text.configure(state="normal")
     log_text.delete("1.0", "end")
 
@@ -269,19 +271,13 @@ def render_log(log_text: tk.Text, entries, sort_mode: str, equipment_filter: str
     if equipment_filter and equipment_filter != "전체":
         filtered_entries = [e for e in entries if e["system"] == equipment_filter]
 
-    ordered_entries = (
-        sorted(filtered_entries, key=lambda e: (e["system"], e["timestamp"]))
-        if sort_mode == "장비별"
-        else filtered_entries
-    )
-
-    if not ordered_entries:
+    if not filtered_entries:
         empty_msg = "선택한 조건에 맞는 기록이 없습니다."
         log_text.insert("end", empty_msg, ("meta",))
         log_text.configure(state="disabled")
         return
 
-    for idx, entry in enumerate(ordered_entries):
+    for idx, entry in enumerate(filtered_entries):
         if idx > 0:
             log_text.insert("end", "\n", ("divider",))
             log_text.insert("end", "─" * 66 + "\n", ("divider",))
@@ -295,7 +291,6 @@ def render_log(log_text: tk.Text, entries, sort_mode: str, equipment_filter: str
 def log_calculation(
     log_text: tk.Text,
     log_entries: list,
-    sort_mode: tk.StringVar,
     equipment_filter: tk.StringVar,
     my_alt: float,
     target_alt: float,
@@ -315,7 +310,7 @@ def log_calculation(
             "high": high_solutions,
         }
     )
-    render_log(log_text, log_entries, sort_mode.get(), equipment_filter.get())
+    render_log(log_text, log_entries, equipment_filter.get())
 
 
 def calculate_and_display(
@@ -329,7 +324,6 @@ def calculate_and_display(
     target_altitude_entry,
     distance_entry,
     log_entries,
-    log_sort_mode,
     log_equipment_filter,
     log_text,
 ):
@@ -386,7 +380,6 @@ def calculate_and_display(
     log_calculation(
         log_text,
         log_entries,
-        log_sort_mode,
         log_equipment_filter,
         my_alt,
         target_alt,
@@ -589,30 +582,15 @@ def build_gui():
     log_header.grid(row=0, column=0, columnspan=2, sticky="ew")
     log_header.columnconfigure(0, weight=1)
     log_header.columnconfigure(1, weight=0)
-    log_header.columnconfigure(2, weight=0)
 
     ttk.Label(
         log_header,
-        text="정렬과 장비 필터로 기록을 정리해 보세요",
+        text="장비별 기록을 선택해 보세요",
         style="Muted.TLabel",
     ).grid(row=0, column=0, sticky="w")
 
-    sort_wrap = ttk.Frame(log_header, style="Card.TFrame")
-    sort_wrap.grid(row=0, column=1, sticky="e")
-    ttk.Label(sort_wrap, text="정렬", style="Muted.TLabel").grid(row=0, column=0, sticky="e", padx=(0, 6))
-    log_sort_mode = tk.StringVar(value="시간순")
-    sort_select = ttk.Combobox(
-        sort_wrap,
-        textvariable=log_sort_mode,
-        values=["시간순", "장비별"],
-        state="readonly",
-        width=8,
-        font=BODY_FONT,
-    )
-    sort_select.grid(row=0, column=1, sticky="e")
-
     equipment_wrap = ttk.Frame(log_header, style="Card.TFrame")
-    equipment_wrap.grid(row=0, column=2, sticky="e", padx=(8, 0))
+    equipment_wrap.grid(row=0, column=1, sticky="e")
     ttk.Label(equipment_wrap, text="장비", style="Muted.TLabel").grid(row=0, column=0, sticky="e", padx=(0, 6))
     log_equipment_filter = tk.StringVar(value="전체")
     equipment_select = ttk.Combobox(
@@ -672,15 +650,9 @@ def build_gui():
     log_entries = []
 
     def _refresh_log(event=None):
-        render_log(log_text, log_entries, log_sort_mode.get(), log_equipment_filter.get())
+        render_log(log_text, log_entries, log_equipment_filter.get())
 
-    def _on_sort_change(event=None):
-        equipment_select.configure(state="readonly" if log_sort_mode.get() == "장비별" else "disabled")
-        _refresh_log()
-
-    sort_select.bind("<<ComboboxSelected>>", _on_sort_change)
     equipment_select.bind("<<ComboboxSelected>>", _refresh_log)
-    equipment_select.configure(state="disabled")  # 초기에는 시간순 필터
 
     log_visible = {"value": False}
 
@@ -713,7 +685,6 @@ def build_gui():
             target_altitude_entry,
             distance_entry,
             log_entries,
-            log_sort_mode,
             log_equipment_filter,
             log_text,
         )
