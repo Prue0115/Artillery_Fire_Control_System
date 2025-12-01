@@ -234,9 +234,9 @@ def _format_log_entry(entry):
 
     header_line = f"시간 {timestamp} · 장비 {entry['system']}"
     meta_line = (
-        f"나의 고도 {entry['my_alt']:>5g}m  |  "
-        f"목표물 고도 {entry['target_alt']:>5g}m  |  "
-        f"거리 {entry['distance']:>6g}m"
+        f"My ALT {entry['my_alt']:>5g}m  |  "
+        f"Target ALT {entry['target_alt']:>5g}m  |  "
+        f"Distance {entry['distance']:>6g}m"
     )
 
     lines = [
@@ -496,7 +496,7 @@ def build_gui():
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
-        text="제작자 : Prue",
+        text="Made by Prue\nDiscord - prue._.0115",
         style="Muted.TLabel",
     )
     subtitle.grid(row=1, column=0, sticky="w")
@@ -519,19 +519,19 @@ def build_gui():
     input_card.grid(row=1, column=0, sticky="ew")
     input_card.columnconfigure(1, weight=1)
 
-    ttk.Label(input_card, text="나의 고도 (m)", style="CardBody.TLabel").grid(
+    ttk.Label(input_card, text="my ALT (m)", style="CardBody.TLabel").grid(
         row=0, column=0, sticky="e", padx=(0, 10), pady=4
     )
     my_altitude_entry = ttk.Entry(input_card)
     my_altitude_entry.grid(row=0, column=1, sticky="ew", pady=4)
 
-    ttk.Label(input_card, text="목표물 고도 (m)", style="CardBody.TLabel").grid(
+    ttk.Label(input_card, text="Target ALT (m)", style="CardBody.TLabel").grid(
         row=1, column=0, sticky="e", padx=(0, 10), pady=4
     )
     target_altitude_entry = ttk.Entry(input_card)
     target_altitude_entry.grid(row=1, column=1, sticky="ew", pady=4)
 
-    ttk.Label(input_card, text="거리 (m)", style="CardBody.TLabel").grid(
+    ttk.Label(input_card, text="Distance (m)", style="CardBody.TLabel").grid(
         row=2, column=0, sticky="e", padx=(0, 10), pady=4
     )
     distance_entry = ttk.Entry(input_card)
