@@ -863,11 +863,22 @@ def build_gui():
     log_body.bind("<Configure>", _on_frame_configure)
     log_canvas.bind("<Configure>", _on_canvas_configure)
 
+    def _can_scroll():
+        region = log_canvas.bbox("all")
+        if not region:
+            return False
+        content_height = region[3] - region[1]
+        return content_height > log_canvas.winfo_height()
+
     def _on_mousewheel(event):
+        if not _can_scroll():
+            return "break"
         log_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         return "break"
 
     def _on_linux_scroll(event):
+        if not _can_scroll():
+            return "break"
         direction = -1 if event.num == 4 else 1
         log_canvas.yview_scroll(direction, "units")
         return "break"
