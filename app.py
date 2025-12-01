@@ -7,11 +7,45 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 
-APP_BG = "#f5f5f7"
-CARD_BG = "#ffffff"
-TEXT_COLOR = "#1d1d1f"
-MUTED_COLOR = "#6e6e73"
-ACCENT_COLOR = "#007aff"
+THEMES = {
+    "light": {
+        "APP_BG": "#f5f5f7",
+        "CARD_BG": "#ffffff",
+        "TEXT_COLOR": "#1d1d1f",
+        "MUTED_COLOR": "#6e6e73",
+        "ACCENT_COLOR": "#007aff",
+        "BORDER_COLOR": "#e5e5ea",
+    },
+    "dark": {
+        "APP_BG": "#1c1c1e",
+        "CARD_BG": "#2c2c2e",
+        "TEXT_COLOR": "#f2f2f7",
+        "MUTED_COLOR": "#8e8e93",
+        "ACCENT_COLOR": "#0a84ff",
+        "BORDER_COLOR": "#3a3a3c",
+    },
+}
+
+APP_BG = ""
+CARD_BG = ""
+TEXT_COLOR = ""
+MUTED_COLOR = ""
+ACCENT_COLOR = ""
+BORDER_COLOR = ""
+
+
+def set_theme(theme_name: str):
+    theme = THEMES[theme_name]
+    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    APP_BG = theme["APP_BG"]
+    CARD_BG = theme["CARD_BG"]
+    TEXT_COLOR = theme["TEXT_COLOR"]
+    MUTED_COLOR = theme["MUTED_COLOR"]
+    ACCENT_COLOR = theme["ACCENT_COLOR"]
+    BORDER_COLOR = theme["BORDER_COLOR"]
+
+
+set_theme("light")
 TITLE_FONT = ("SF Pro Display", 18, "bold")
 BODY_FONT = ("SF Pro Text", 12)
 MONO_FONT = ("SF Mono", 12)
@@ -401,6 +435,7 @@ def apply_styles(root: tk.Tk):
 
     style.configure("Body.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=BODY_FONT)
     style.configure("Muted.TLabel", background=APP_BG, foreground=MUTED_COLOR, font=BODY_FONT)
+    style.configure("Title.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=TITLE_FONT)
     style.configure("CardBody.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=BODY_FONT, anchor="w")
     style.configure("TableHeader.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=(BODY_FONT[0], 11, "bold"))
     style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
@@ -449,6 +484,39 @@ def apply_styles(root: tk.Tk):
     )
 
 
+def refresh_solution_rows(rows):
+    for row in rows:
+        for key in ("ch", "mill", "eta"):
+            widget = row[key]
+            widget.configure(bg=CARD_BG)
+            widget.configure(fg=MUTED_COLOR if widget.cget("text") == "—" else TEXT_COLOR)
+
+
+def configure_log_widget(log_text: tk.Text):
+    log_text.configure(
+        bg=CARD_BG,
+        fg=TEXT_COLOR,
+        highlightbackground=BORDER_COLOR,
+        highlightcolor=BORDER_COLOR,
+    )
+    log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
+    log_text.tag_configure("meta", foreground=MUTED_COLOR)
+    log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
+    log_text.tag_configure("subheader", font=(MONO_FONT[0], 10, "bold"), foreground=MUTED_COLOR)
+    log_text.tag_configure("divider", foreground=BORDER_COLOR)
+
+
+def apply_theme(root: tk.Tk, theme_name: str, *, solution_tables, log_text: tk.Text):
+    set_theme(theme_name)
+    root.configure(bg=APP_BG)
+    apply_styles(root)
+
+    for rows in solution_tables:
+        refresh_solution_rows(rows)
+
+    configure_log_widget(log_text)
+
+
 def build_solution_table(parent):
     table = ttk.Frame(parent, style="Card.TFrame")
     table.columnconfigure(0, weight=1)
@@ -479,6 +547,147 @@ def build_solution_table(parent):
     return rows, status
 
 
+def _draw_circle(img, cx, cy, r, *, fill, outline):
+    for y in range(img.height()):
+        for x in range(img.width()):
+            dist = math.hypot(x - cx, y - cy)
+            if dist <= r:
+                color = outline if dist >= r - 1 else fill
+                img.put(color, (x, y))
+
+
+def _add_sun_rays(img, cx, cy, *, color):
+    ray_offsets = [(0, -9), (0, 9), (-9, 0), (9, 0), (-6, -6), (6, -6), (-6, 6), (6, 6)]
+    for dx, dy in ray_offsets:
+        x, y = cx + dx, cy + dy
+        if 0 <= x < img.width() and 0 <= y < img.height():
+            img.put(color, (x, y))
+            if dx == 0:
+                img.put(color, (x + 1, y))
+                img.put(color, (x - 1, y))
+            if dy == 0:
+                img.put(color, (x, y + 1))
+                img.put(color, (x, y - 1))
+
+
+def _add_moon_cutout(img, cx, cy, *, base_color, background_color):
+    for y in range(img.height()):
+        for x in range(img.width()):
+            dist = math.hypot(x - (cx + 4), y - (cy - 1))
+            if dist <= 8:
+                img.put(background_color, (x, y))
+            elif dist <= 9:
+                img.put(base_color, (x, y))
+
+
+def _hex_to_rgb(value: str):
+    value = value.strip()
+    if value.startswith("#"):
+        value = value[1:]
+    return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def _rgb_to_hex(rgb):
+    return "#%02x%02x%02x" % rgb
+
+
+def _ease_in_out(t: float) -> float:
+    # cosine ease for smoother ramp up/down
+    return 0.5 - 0.5 * math.cos(math.pi * t)
+
+
+def _build_icon_pulse_frames(icon: tk.PhotoImage):
+    frames = []
+    # Use gentle scaling factors to create a brief pulse animation.
+    scales = [(10, 10), (11, 10), (12, 10), (11, 10), (10, 10)]
+    for num, den in scales:
+        frames.append(icon.zoom(num).subsample(den))
+    return frames
+
+
+def _sample_or_default(icon: tk.PhotoImage, x: int, y: int, default: str):
+    width, height = icon.width(), icon.height()
+    if 0 <= x < width and 0 <= y < height:
+        return icon.get(x, y)
+    return default
+
+
+def _build_rotation_frames(
+    icon: tk.PhotoImage,
+    *,
+    start_deg: float,
+    end_deg: float,
+    steps: int = 12,
+    background: str,
+):
+    width, height = icon.width(), icon.height()
+    cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
+    frames = []
+
+    for i in range(steps + 1):
+        t = i / steps
+        eased = _ease_in_out(t)
+        angle = math.radians(start_deg + (end_deg - start_deg) * eased)
+        cos_a = math.cos(-angle)
+        sin_a = math.sin(-angle)
+        frame = tk.PhotoImage(width=width, height=height)
+
+        for y in range(height):
+            for x in range(width):
+                dx, dy = x - cx, y - cy
+                src_x = int(round(dx * cos_a - dy * sin_a + cx))
+                src_y = int(round(dx * sin_a + dy * cos_a + cy))
+                color = _sample_or_default(icon, src_x, src_y, background)
+                frame.put(color, (x, y))
+
+        frames.append(frame)
+
+    return frames
+
+
+def create_theme_icons():
+    icons = {}
+    pulses = {}
+    rotations = {}
+    size = 28
+    center = size // 2
+
+    for name, palette in THEMES.items():
+        img = tk.PhotoImage(width=size, height=size)
+        base_fill = palette["CARD_BG"]
+        outline = palette["ACCENT_COLOR"]
+        _draw_circle(img, center, center, 10, fill=base_fill, outline=outline)
+
+        if name == "light":
+            _add_sun_rays(img, center, center, color=outline)
+        else:
+            _add_moon_cutout(
+                img,
+                center,
+                center,
+                base_color=base_fill,
+                background_color=palette["APP_BG"],
+            )
+
+        icons[name] = img
+        pulses[name] = _build_icon_pulse_frames(img)
+
+    rotations["sun_rise"] = _build_rotation_frames(
+        icons["light"], start_deg=180, end_deg=360, steps=12, background=THEMES["light"]["APP_BG"]
+    )
+    rotations["sun_set"] = _build_rotation_frames(
+        icons["light"], start_deg=0, end_deg=180, steps=12, background=THEMES["light"]["APP_BG"]
+    )
+    rotations["moon_rise"] = _build_rotation_frames(
+        icons["dark"], start_deg=180, end_deg=360, steps=12, background=THEMES["dark"]["APP_BG"]
+    )
+    rotations["moon_set"] = _build_rotation_frames(
+        icons["dark"], start_deg=0, end_deg=180, steps=12, background=THEMES["dark"]["APP_BG"]
+    )
+
+    return icons, pulses, rotations
+
+
 def build_gui():
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
@@ -492,7 +701,7 @@ def build_gui():
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
-    title = ttk.Label(header, text="AFCS v1.1", font=TITLE_FONT, foreground=TEXT_COLOR, background=APP_BG)
+    title = ttk.Label(header, text="AFCS v1.1", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
@@ -568,11 +777,22 @@ def build_gui():
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
+    theme_var = tk.StringVar(value="light")
+    theme_icons, icon_pulses, icon_rotations = create_theme_icons()
+
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
+    theme_toggle = ttk.Button(
+        bottom_bar,
+        image=theme_icons["light"],
+        style="Secondary.TButton",
+        padding=(10, 8),
+        takefocus=False,
+    )
+    theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
-    log_toggle_button.grid(row=0, column=1, sticky="e")
+    log_toggle_button.grid(row=0, column=2, sticky="e")
 
     log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
     log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
@@ -581,16 +801,9 @@ def build_gui():
     log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, 6))
     log_header.grid(row=0, column=0, columnspan=2, sticky="ew")
     log_header.columnconfigure(0, weight=1)
-    log_header.columnconfigure(1, weight=0)
-
-    ttk.Label(
-        log_header,
-        text="장비별 기록을 선택해 보세요",
-        style="Muted.TLabel",
-    ).grid(row=0, column=0, sticky="w")
 
     equipment_wrap = ttk.Frame(log_header, style="Card.TFrame")
-    equipment_wrap.grid(row=0, column=1, sticky="e")
+    equipment_wrap.grid(row=0, column=0, sticky="e")
     ttk.Label(equipment_wrap, text="장비", style="Muted.TLabel").grid(row=0, column=0, sticky="e", padx=(0, 6))
     log_equipment_filter = tk.StringVar(value="전체")
     equipment_select = ttk.Combobox(
@@ -606,27 +819,19 @@ def build_gui():
         log_frame,
         width=66,
         height=22,
-        bg=CARD_BG,
-        fg=TEXT_COLOR,
         font=MONO_FONT,
         relief="flat",
         borderwidth=1,
         highlightthickness=1,
-        highlightbackground="#e5e5ea",
-        highlightcolor="#e5e5ea",
         wrap="none",
         padx=14,
         pady=10,
     )
+    configure_log_widget(log_text)
     log_text.configure(spacing1=2, spacing3=6)
     log_text.grid(row=1, column=0, sticky="nsew")
     log_text.configure(state="disabled")
-    log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
-    log_text.tag_configure("meta", foreground=MUTED_COLOR)
-    log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
-    log_text.tag_configure("subheader", font=(MONO_FONT[0], 10, "bold"), foreground=MUTED_COLOR)
     log_text.tag_configure("row", spacing1=1, spacing3=1)
-    log_text.tag_configure("divider", foreground="#d2d2d7")
     y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
     y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
     log_text.configure(yscrollcommand=y_scroll.set)
@@ -666,6 +871,62 @@ def build_gui():
             log_toggle_button.configure(text="기록")
 
     log_toggle_button.configure(command=toggle_log)
+
+    def animate_theme_transition(old_theme: str, new_theme: str):
+        theme_toggle.state(["disabled"])
+
+        if new_theme == "dark":
+            first_frames = icon_rotations["sun_set"]
+            second_frames = icon_rotations["moon_rise"]
+        else:
+            first_frames = icon_rotations["moon_set"]
+            second_frames = icon_rotations["sun_rise"]
+
+        def _run_sequence(frames, on_done):
+            def _step(idx=0):
+                theme_toggle.configure(image=frames[idx])
+                if idx + 1 < len(frames):
+                    root.after(40, _step, idx + 1)
+                else:
+                    on_done()
+
+            _step()
+
+        def _start_second():
+            _run_sequence(second_frames, _finish)
+
+        def _finish():
+            theme_toggle.configure(image=theme_icons[new_theme])
+            theme_toggle.state(["!disabled"])
+            animate_theme_pulse(new_theme)
+
+        _run_sequence(first_frames, _start_second)
+
+    def animate_theme_pulse(theme_name: str):
+        frames = icon_pulses[theme_name]
+
+        def _step(idx=0):
+            theme_toggle.configure(image=frames[idx])
+            if idx + 1 < len(frames):
+                root.after(22, _step, idx + 1)
+            else:
+                theme_toggle.configure(image=theme_icons[theme_name])
+
+        _step()
+
+    def toggle_theme():
+        old_theme = theme_var.get()
+        new_theme = "dark" if old_theme == "light" else "light"
+        theme_var.set(new_theme)
+        apply_theme(
+            root,
+            new_theme,
+            solution_tables=[low_rows, high_rows],
+            log_text=log_text,
+        )
+        animate_theme_transition(old_theme, new_theme)
+
+    theme_toggle.configure(command=toggle_theme)
 
     root.columnconfigure(0, weight=1)
     root.columnconfigure(1, weight=0)
