@@ -520,6 +520,19 @@ def apply_styles(root: tk.Tk):
     )
 
     style.configure(
+        "ThemeToggle.TButton",
+        padding=(6, 6),
+        relief="solid",
+        borderwidth=1,
+        background=CARD_BG,
+        foreground=ACCENT_COLOR,
+    )
+    style.map(
+        "ThemeToggle.TButton",
+        background=[("active", HOVER_BG), ("pressed", PRESSED_BG)],
+    )
+
+    style.configure(
         "Card.TLabelframe",
         background=CARD_BG,
         borderwidth=0,
@@ -709,11 +722,6 @@ def build_gui():
         messagebox.showerror("아이콘 로드 오류", f"테마 아이콘을 불러오지 못했습니다.\n{e}")
         root.light_icon_base = root.dark_icon_base = None
         root.light_icon_hover = root.dark_icon_hover = None
-
-    # 버튼 스타일(hover 시 border 색상 변경 비슷한 느낌)
-    style = ttk.Style()
-    style.configure("ThemeToggle.TButton", padding=(6, 6), relief="solid", borderwidth=1, background=CARD_BG, foreground=ACCENT_COLOR)
-    style.map("ThemeToggle.TButton", background=[("active", HOVER_BG), ("pressed", PRESSED_BG)])
 
     theme_toggle = ttk.Button(
         bottom_bar,
