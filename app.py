@@ -15,6 +15,12 @@ THEMES = {
         "MUTED_COLOR": "#6e6e73",
         "ACCENT_COLOR": "#007aff",
         "BORDER_COLOR": "#e5e5ea",
+        "INPUT_BG": "#ffffff",
+        "INPUT_BORDER": "#d1d1d6",
+        "HOVER_BG": "#e6f0ff",
+        "PRESSED_BG": "#d6e5ff",
+        "SECONDARY_ACTIVE": "#f0f4ff",
+        "PRIMARY_PRESSED": "#0060df",
     },
     "dark": {
         "APP_BG": "#1c1c1e",
@@ -23,6 +29,12 @@ THEMES = {
         "MUTED_COLOR": "#8e8e93",
         "ACCENT_COLOR": "#0a84ff",
         "BORDER_COLOR": "#3a3a3c",
+        "INPUT_BG": "#2c2c2e",
+        "INPUT_BORDER": "#4a4a4c",
+        "HOVER_BG": "#0f2f55",
+        "PRESSED_BG": "#0c2441",
+        "SECONDARY_ACTIVE": "#2f2f33",
+        "PRIMARY_PRESSED": "#07294d",
     },
 }
 
@@ -32,17 +44,30 @@ TEXT_COLOR = ""
 MUTED_COLOR = ""
 ACCENT_COLOR = ""
 BORDER_COLOR = ""
+INPUT_BG = ""
+INPUT_BORDER = ""
+HOVER_BG = ""
+PRESSED_BG = ""
+SECONDARY_ACTIVE = ""
+PRIMARY_PRESSED = ""
 
 
 def set_theme(theme_name: str):
     theme = THEMES[theme_name]
     global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
     APP_BG = theme["APP_BG"]
     CARD_BG = theme["CARD_BG"]
     TEXT_COLOR = theme["TEXT_COLOR"]
     MUTED_COLOR = theme["MUTED_COLOR"]
     ACCENT_COLOR = theme["ACCENT_COLOR"]
     BORDER_COLOR = theme["BORDER_COLOR"]
+    INPUT_BG = theme["INPUT_BG"]
+    INPUT_BORDER = theme["INPUT_BORDER"]
+    HOVER_BG = theme["HOVER_BG"]
+    PRESSED_BG = theme["PRESSED_BG"]
+    SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]
+    PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]
 
 
 set_theme("light")
@@ -443,6 +468,29 @@ def apply_styles(root: tk.Tk):
     style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
 
     style.configure(
+        "TEntry",
+        fieldbackground=INPUT_BG,
+        background=INPUT_BG,
+        foreground=TEXT_COLOR,
+        bordercolor=INPUT_BORDER,
+        lightcolor=INPUT_BORDER,
+        darkcolor=INPUT_BORDER,
+        insertcolor=TEXT_COLOR,
+        relief="solid",
+    )
+
+    style.configure(
+        "TCombobox",
+        fieldbackground=INPUT_BG,
+        background=INPUT_BG,
+        foreground=TEXT_COLOR,
+        bordercolor=INPUT_BORDER,
+        lightcolor=INPUT_BORDER,
+        darkcolor=INPUT_BORDER,
+        arrowcolor=TEXT_COLOR,
+    )
+
+    style.configure(
         "Primary.TButton",
         font=(BODY_FONT[0], 12, "bold"),
         foreground="#ffffff",
@@ -452,7 +500,7 @@ def apply_styles(root: tk.Tk):
     )
     style.map(
         "Primary.TButton",
-        background=[("active", "#0a84ff"), ("pressed", "#0060df")],
+        background=[("active", ACCENT_COLOR), ("pressed", PRIMARY_PRESSED)],
         foreground=[("disabled", "#d1d1d6")],
     )
 
@@ -467,7 +515,7 @@ def apply_styles(root: tk.Tk):
     )
     style.map(
         "Secondary.TButton",
-        background=[("active", "#f0f4ff")],
+        background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
         foreground=[("disabled", "#c7c7cc")],
     )
 
@@ -500,6 +548,9 @@ def configure_log_widget(log_text: tk.Text):
         fg=TEXT_COLOR,
         highlightbackground=BORDER_COLOR,
         highlightcolor=BORDER_COLOR,
+        insertbackground=TEXT_COLOR,
+        selectbackground=ACCENT_COLOR,
+        selectforeground="#ffffff",
     )
     log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
     log_text.tag_configure("meta", foreground=MUTED_COLOR)
@@ -662,7 +713,7 @@ def build_gui():
     # 버튼 스타일(hover 시 border 색상 변경 비슷한 느낌)
     style = ttk.Style()
     style.configure("ThemeToggle.TButton", padding=(6, 6), relief="solid", borderwidth=1, background=CARD_BG, foreground=ACCENT_COLOR)
-    style.map("ThemeToggle.TButton", background=[("active", "#e6f0ff")])
+    style.map("ThemeToggle.TButton", background=[("active", HOVER_BG), ("pressed", PRESSED_BG)])
 
     theme_toggle = ttk.Button(
         bottom_bar,
