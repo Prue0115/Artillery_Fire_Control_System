@@ -18,7 +18,13 @@ MONO_FONT = ("SF Mono", 12)
 MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
-SYSTEM_FILE_PREFIX = {"M109A6": "M109A6", "M1129": "M1129", "M119": "M119"}
+SYSTEM_FILE_PREFIX = {
+    "M109A6": "M109A6",
+    "M1129": "M1129",
+    "M119": "M119",
+    "RH-70": "RM70",
+    "siala": "siala",
+}
 
 # 장비별로 고정된 궤적으로만 사격해야 하는 경우를 명시한다.
 # 지정되지 않은 장비는 존재하는 CSV 파일을 기준으로 자동 감지한다.
@@ -402,7 +408,7 @@ def build_gui():
     system_select = ttk.Combobox(
         system_picker,
         textvariable=system_var,
-        values=["M109A6", "M1129", "M119"],
+        values=["M109A6", "M1129", "M119", "RH-70", "siala"],
         state="readonly",
         width=8,
         font=BODY_FONT,
