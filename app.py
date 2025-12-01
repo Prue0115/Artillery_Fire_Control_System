@@ -914,6 +914,8 @@ def build_gui():
     log_entries = []
     log_visible = {"value": False}
 
+    log_column_width = {"value": 0}
+
     def _sync_layout():
         if log_visible["value"]:
             log_frame.update_idletasks()
@@ -921,8 +923,10 @@ def build_gui():
             scrollbar_width = y_scroll.winfo_reqwidth()
             table_width = max(results_card.winfo_width(), results_card.winfo_reqwidth())
             desired_width = max(table_width, content_width + scrollbar_width)
+            if desired_width > log_column_width["value"]:
+                log_column_width["value"] = desired_width
             root.columnconfigure(0, weight=1)
-            root.columnconfigure(1, weight=0, minsize=desired_width)
+            root.columnconfigure(1, weight=0, minsize=log_column_width["value"])
         else:
             root.columnconfigure(0, weight=1)
             root.columnconfigure(1, weight=0, minsize=0)
