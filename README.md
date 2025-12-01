@@ -27,6 +27,16 @@ make zip-windows MINGW_PREFIX=x86_64-w64-mingw32
 `dist/windows/` 안에는 `cli_calculator.exe`, `auto_updater.exe`, `installer_gui.exe`와 `rangeTables/` 폴더가 함께 담겨
 즉시 배포 가능한 상태가 됩니다.
 
+#### `make` 명령이 없을 때 (PowerShell/CMD)
+- 기본 Windows 셸에서는 `make`가 없으니 **MSYS2 MinGW64 터미널**에서 실행하거나 `mingw32-make`를 PATH에 추가합니다.
+- MSYS2 설치 후: 시작 메뉴에서 "MSYS2 MinGW x64" 터미널을 열고 위의 명령을 그대로 실행하면 됩니다.
+- `mingw32-make`만 있는 경우:
+  ```bash
+  mingw32-make -f Makefile windows MINGW_PREFIX=x86_64-w64-mingw32
+  mingw32-make -f Makefile zip-windows MINGW_PREFIX=x86_64-w64-mingw32
+  ```
+- Chocolatey 등을 통해 `make`를 설치해도 동일하게 동작합니다.
+
 ## 사용 방법
 ```bash
 # 사용 가능한 테이블 목록
