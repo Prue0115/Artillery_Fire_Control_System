@@ -23,7 +23,7 @@ SYSTEM_FILE_PREFIX = {
     "M109A6": "M109A6",
     "M1129": "M1129",
     "M119": "M119",
-    "RH-70": "RM70",
+    "RM-70": "RM70",
     "siala": "siala",
 }
 
@@ -508,7 +508,7 @@ def build_gui():
     system_select = ttk.Combobox(
         system_picker,
         textvariable=system_var,
-        values=["M109A6", "M1129", "M119", "RH-70", "siala"],
+        values=["M109A6", "M1129", "M119", "RM-70", "siala"],
         state="readonly",
         width=8,
         font=BODY_FONT,
@@ -596,7 +596,7 @@ def build_gui():
     equipment_select = ttk.Combobox(
         equipment_wrap,
         textvariable=log_equipment_filter,
-        values=["전체", "M109A6", "M1129", "M119", "RH-70", "siala"],
+        values=["전체", "M109A6", "M1129", "M119", "RM-70", "siala"],
         state="readonly",
         width=8,
         font=BODY_FONT,
