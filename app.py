@@ -537,7 +537,7 @@ def build_gui():
     ).grid(row=0, column=0, sticky="w", pady=(0, 6))
     log_text = tk.Text(
         log_frame,
-        width=48,
+        width=60,
         height=20,
         bg="#fafafa",
         fg=TEXT_COLOR,
@@ -557,9 +557,11 @@ def build_gui():
     log_text.tag_configure("meta", foreground=MUTED_COLOR)
     log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
     log_text.tag_configure("divider", foreground="#d2d2d7")
-    log_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
-    log_scroll.grid(row=1, column=1, sticky="ns")
-    log_text.configure(yscrollcommand=log_scroll.set)
+    y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
+    y_scroll.grid(row=1, column=1, sticky="ns")
+    x_scroll = ttk.Scrollbar(log_frame, orient="horizontal", command=log_text.xview)
+    x_scroll.grid(row=2, column=0, sticky="ew")
+    log_text.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
     log_frame.columnconfigure(0, weight=1)
     log_frame.rowconfigure(1, weight=1)
 
