@@ -481,7 +481,7 @@ def build_solution_table(parent):
 
 def build_gui():
     root = tk.Tk()
-    root.title("포병 계산기")
+    root.title("AFCS : Artillery Fire Control System")
     root.configure(bg=APP_BG)
     root.option_add("*Font", BODY_FONT)
     apply_styles(root)
@@ -492,7 +492,7 @@ def build_gui():
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
-    title = ttk.Label(header, text="포병 계산기", font=TITLE_FONT, foreground=TEXT_COLOR, background=APP_BG)
+    title = ttk.Label(header, text="AFCS v1.0", font=TITLE_FONT, foreground=TEXT_COLOR, background=APP_BG)
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
