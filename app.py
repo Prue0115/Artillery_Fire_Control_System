@@ -462,6 +462,7 @@ def calculate_and_display(
     log_entries,
     log_equipment_filter,
     log_body,
+    sync_layout=None,
 ):
     try:
         my_alt = float(my_altitude_entry.get())
@@ -523,6 +524,7 @@ def calculate_and_display(
         system,
         low_solutions,
         high_solutions,
+        sync_layout=sync_layout,
     )
 
 
