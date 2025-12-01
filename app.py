@@ -919,7 +919,8 @@ def build_gui():
             log_frame.update_idletasks()
             content_width = log_body.winfo_reqwidth()
             scrollbar_width = y_scroll.winfo_reqwidth()
-            desired_width = max(log_frame.winfo_reqwidth(), content_width + scrollbar_width)
+            table_width = max(results_card.winfo_width(), results_card.winfo_reqwidth())
+            desired_width = max(table_width, content_width + scrollbar_width)
             root.columnconfigure(0, weight=1)
             root.columnconfigure(1, weight=0, minsize=desired_width)
         else:
