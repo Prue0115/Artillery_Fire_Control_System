@@ -300,25 +300,44 @@ def _format_log_entry(entry):
         f"Distance {entry['distance']:>6g}m"
     )
 
+    low_block_width = 32
+    low_block_header = f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}"
     lines = [
         (f"{header_line}\n", "time"),
         (f"{meta_line}\n", "meta"),
         ("┄" * 62 + "\n", "divider"),
-        (f"{'LOW':<28}{'HIGH'}\n", "header"),
-        (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
+        (f"{'LOW':<{low_block_width}}HIGH\n", "header"),
+        (
+            f"{low_block_header:<{low_block_width}}"
+            f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}\n",
+            "subheader",
+        ),
     ]
 
-    row_count = max(len(entry["low"]), len(entry["high"]), 1)
-    for idx in range(row_count):
-        low = entry["low"][idx] if idx < len(entry["low"]) else None
-        high = entry["high"][idx] if idx < len(entry["high"]) else None
+    low_sorted = sorted(entry["low"], key=lambda s: s["charge"])
+    high_sorted = sorted(entry["high"], key=lambda s: s["charge"])
+
+    low_map = {solution["charge"]: solution for solution in low_sorted}
+    high_map = {solution["charge"]: solution for solution in high_sorted}
+
+    charges = sorted(set(low_map.keys()) | set(high_map.keys()))
+    if not charges:
+        charges = [None]
+
+    for charge in charges:
+        low = low_map.get(charge)
+        high = high_map.get(charge)
 
         def fmt(solution):
             if solution:
-                return f"{solution['charge']:>3}   {solution['mill']:>8.2f}   {solution['eta']:>5.1f}"
+                return (
+                    f"{solution['charge']:>3}   {solution['mill']:>8.2f}   "
+                    f"{solution['eta']:>5.1f}"
+                )
             return f"{'—':>3}   {'—':>8}   {'—':>5}"
 
-        lines.append((f"{fmt(low):<28}{fmt(high)}\n", "row"))
+        row_line = f"{fmt(low):<{low_block_width}}{fmt(high)}\n"
+        lines.append((row_line, "row"))
 
     lines.append(("\n", None))
     return lines
@@ -328,9 +347,11 @@ def render_log(log_text: tk.Text, entries, equipment_filter: str):
     log_text.configure(state="normal")
     log_text.delete("1.0", "end")
 
-    filtered_entries = entries
+    filtered_entries = sorted(entries, key=lambda e: e["timestamp"], reverse=True)
     if equipment_filter and equipment_filter != "전체":
-        filtered_entries = [e for e in entries if e["system"] == equipment_filter]
+        filtered_entries = [
+            e for e in filtered_entries if e["system"] == equipment_filter
+        ]
 
     if not filtered_entries:
         empty_msg = "선택한 조건에 맞는 기록이 없습니다."
@@ -728,17 +749,10 @@ def build_gui():
     # PNG 아이콘 로드
     try:
         root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
-        root.dark_icon_base  = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
-        # hover용 확대 아이콘 (≈1.2배, 정수 배율 근사)
-        def make_hover(img: tk.PhotoImage):
-            # 6/5 ≈ 1.2배
-            return img.zoom(6, 6).subsample(5, 5)
-        root.light_icon_hover = make_hover(root.light_icon_base)
-        root.dark_icon_hover  = make_hover(root.dark_icon_base)
+        root.dark_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
     except Exception as e:
         messagebox.showerror("아이콘 로드 오류", f"테마 아이콘을 불러오지 못했습니다.\n{e}")
         root.light_icon_base = root.dark_icon_base = None
-        root.light_icon_hover = root.dark_icon_hover = None
 
     theme_toggle = ttk.Button(
         bottom_bar,
@@ -839,28 +853,18 @@ def build_gui():
             solution_tables=[low_rows, high_rows],
             log_text=log_text,
         )
-        # 현재 상태에 맞게 아이콘 갱신(hover 상태 고려)
-        _apply_toggle_icon(new_theme, hover=False)
+        # 현재 상태에 맞게 아이콘 갱신
+        _apply_toggle_icon(new_theme)
 
     theme_toggle.configure(command=toggle_theme)
 
-    def _apply_toggle_icon(mode: str, hover: bool):
+    def _apply_toggle_icon(mode: str):
         if mode == "light":
-            img = (root.light_icon_hover if hover else root.light_icon_base) if root.light_icon_base else None
+            img = root.light_icon_base if root.light_icon_base else None
             theme_toggle.configure(image=img, text="" if img else "🌞")
         else:
-            img = (root.dark_icon_hover if hover else root.dark_icon_base) if root.dark_icon_base else None
+            img = root.dark_icon_base if root.dark_icon_base else None
             theme_toggle.configure(image=img, text="" if img else "🌙")
-
-    # hover 이벤트: 색/확대 근사
-    def _on_enter(_e=None):
-        _apply_toggle_icon(theme_var.get(), hover=True)
-
-    def _on_leave(_e=None):
-        _apply_toggle_icon(theme_var.get(), hover=False)
-
-    theme_toggle.bind("<Enter>", _on_enter)
-    theme_toggle.bind("<Leave>", _on_leave)
 
     root.columnconfigure(0, weight=1)
     root.columnconfigure(1, weight=0)
