@@ -431,6 +431,7 @@ def log_calculation(
     system: str,
     low_solutions,
     high_solutions,
+    sync_layout=None,
 ):
     log_entries.append(
         {
@@ -444,6 +445,8 @@ def log_calculation(
         }
     )
     render_log(log_body, log_entries, equipment_filter.get())
+    if sync_layout:
+        sync_layout()
 
 
 def calculate_and_display(
@@ -459,6 +462,7 @@ def calculate_and_display(
     log_entries,
     log_equipment_filter,
     log_body,
+    sync_layout=None,
 ):
     try:
         my_alt = float(my_altitude_entry.get())
@@ -520,6 +524,7 @@ def calculate_and_display(
         system,
         low_solutions,
         high_solutions,
+        sync_layout=sync_layout,
     )
 
 
@@ -907,25 +912,38 @@ def build_gui():
     log_frame.rowconfigure(1, weight=1)
 
     log_entries = []
-
-    def _refresh_log(event=None):
-        render_log(log_body, log_entries, log_equipment_filter.get())
-
-    render_log(log_body, log_entries, log_equipment_filter.get())
-
-    equipment_select.bind("<<ComboboxSelected>>", _refresh_log)
-
     log_visible = {"value": False}
+
+    log_column_width = {"value": 0}
 
     def _sync_layout():
         if log_visible["value"]:
             log_frame.update_idletasks()
-            desired_width = log_frame.winfo_reqwidth()
+            root_width = max(root.winfo_width(), root.winfo_reqwidth())
+
+            content_width = log_body.winfo_reqwidth()
+            scrollbar_width = y_scroll.winfo_reqwidth()
+            table_width = max(results_card.winfo_width(), results_card.winfo_reqwidth())
+            desired_width = max(table_width, content_width + scrollbar_width)
+
+            if desired_width > log_column_width["value"]:
+                log_column_width["value"] = desired_width
+
+            capped_width = min(log_column_width["value"], max(root_width // 2, desired_width))
+
             root.columnconfigure(0, weight=1)
-            root.columnconfigure(1, weight=0, minsize=desired_width)
+            root.columnconfigure(1, weight=0, minsize=capped_width)
         else:
             root.columnconfigure(0, weight=1)
             root.columnconfigure(1, weight=0, minsize=0)
+
+    def _refresh_log(event=None):
+        render_log(log_body, log_entries, log_equipment_filter.get())
+        _sync_layout()
+
+    _refresh_log()
+
+    equipment_select.bind("<<ComboboxSelected>>", _refresh_log)
 
     def toggle_log():
         log_visible["value"] = not log_visible["value"]
@@ -982,6 +1000,7 @@ def build_gui():
             log_entries,
             log_equipment_filter,
             log_body,
+            _sync_layout,
         )
     )
 
