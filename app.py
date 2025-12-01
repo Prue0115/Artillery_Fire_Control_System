@@ -890,6 +890,14 @@ def build_gui():
 
     log_visible = {"value": False}
 
+    def _sync_layout():
+        if log_visible["value"]:
+            root.columnconfigure(0, weight=1)
+            root.columnconfigure(1, weight=1, minsize=log_frame.winfo_reqwidth())
+        else:
+            root.columnconfigure(0, weight=1)
+            root.columnconfigure(1, weight=0, minsize=0)
+
     def toggle_log():
         log_visible["value"] = not log_visible["value"]
         if log_visible["value"]:
@@ -898,6 +906,7 @@ def build_gui():
         else:
             log_frame.grid_remove()
             log_toggle_button.configure(text="기록")
+        _sync_layout()
 
     log_toggle_button.configure(command=toggle_log)
 
@@ -925,8 +934,7 @@ def build_gui():
             img = root.dark_icon_base if root.dark_icon_base else None
             theme_toggle.configure(image=img, text="" if img else "🌙")
 
-    root.columnconfigure(0, weight=1)
-    root.columnconfigure(1, weight=1)
+    _sync_layout()
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
     main.rowconfigure(3, weight=1)
