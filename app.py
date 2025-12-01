@@ -231,15 +231,18 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
 
 def _format_log_entry(entry):
     timestamp = entry["timestamp"].strftime("%H:%M")
-    meta_line_1 = f"나의 고도(m) : {entry['my_alt']:g} | 목표물 고도(m) : {entry['target_alt']:g}"
-    meta_line_2 = f"거리(m) : {entry['distance']:g} | 장비 : {entry['system']}"
+
+    header_line = f"시간 {timestamp} · 장비 {entry['system']}"
+    meta_line_1 = f"나의 고도 {entry['my_alt']:g}m    목표물 고도 {entry['target_alt']:g}m"
+    meta_line_2 = f"거리 {entry['distance']:g}m"
 
     lines = [
-        (f"시간 {timestamp}\n", "time"),
+        (f"{header_line}\n", "time"),
         (f"{meta_line_1}\n", "meta"),
         (f"{meta_line_2}\n", "meta"),
-        (f"{'LOW':<32}HIGH\n", "header"),
-        (f"{'CH':>3} {'MILL':>8} {'ETA':>6}   {'CH':>3} {'MILL':>8} {'ETA':>6}\n", "header"),
+        ("┄" * 62 + "\n", "divider"),
+        (f"{'LOW':<28}{'HIGH'}\n", "header"),
+        (f"{'CH':>3}   {'MILL':>8}   {'ETA':>5}    {'CH':>3}   {'MILL':>8}   {'ETA':>5}\n", "subheader"),
     ]
 
     row_count = max(len(entry["low"]), len(entry["high"]), 1)
@@ -249,11 +252,12 @@ def _format_log_entry(entry):
 
         def fmt(solution):
             if solution:
-                return f"{solution['charge']:>3} {solution['mill']:>8.2f} {solution['eta']:>6.1f}"
-            return f"{'—':>3} {'—':>8} {'—':>6}"
+                return f"{solution['charge']:>3}   {solution['mill']:>8.2f}   {solution['eta']:>5.1f}"
+            return f"{'—':>3}   {'—':>8}   {'—':>5}"
 
-        lines.append((f"{fmt(low):<24}   {fmt(high)}\n", None))
+        lines.append((f"{fmt(low):<28}{fmt(high)}\n", "row"))
 
+    lines.append(("\n", None))
     return lines
 
 
@@ -270,6 +274,12 @@ def render_log(log_text: tk.Text, entries, sort_mode: str, equipment_filter: str
         if sort_mode == "장비별"
         else filtered_entries
     )
+
+    if not ordered_entries:
+        empty_msg = "선택한 조건에 맞는 기록이 없습니다."
+        log_text.insert("end", empty_msg, ("meta",))
+        log_text.configure(state="disabled")
+        return
 
     for idx, entry in enumerate(ordered_entries):
         if idx > 0:
@@ -571,19 +581,19 @@ def build_gui():
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
     log_toggle_button.grid(row=0, column=1, sticky="e")
 
-    log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=12)
+    log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
     log_frame.grid(row=0, column=1, sticky="nsw", padx=(0, 12), pady=12)
     log_frame.grid_remove()
 
-    log_header = ttk.Frame(log_frame, style="Card.TFrame")
-    log_header.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+    log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, 6))
+    log_header.grid(row=0, column=0, columnspan=2, sticky="ew")
     log_header.columnconfigure(0, weight=1)
     log_header.columnconfigure(1, weight=0)
     log_header.columnconfigure(2, weight=0)
 
     ttk.Label(
         log_header,
-        text="최근 계산 결과가 순서대로 표시됩니다",
+        text="정렬과 장비 필터로 기록을 정리해 보세요",
         style="Muted.TLabel",
     ).grid(row=0, column=0, sticky="w")
 
@@ -618,7 +628,7 @@ def build_gui():
         log_frame,
         width=66,
         height=22,
-        bg="#fafafa",
+        bg=CARD_BG,
         fg=TEXT_COLOR,
         font=MONO_FONT,
         relief="flat",
@@ -627,14 +637,17 @@ def build_gui():
         highlightbackground="#e5e5ea",
         highlightcolor="#e5e5ea",
         wrap="none",
-        padx=10,
-        pady=8,
+        padx=14,
+        pady=10,
     )
+    log_text.configure(spacing1=2, spacing3=6)
     log_text.grid(row=1, column=0, sticky="nsew")
     log_text.configure(state="disabled")
     log_text.tag_configure("time", foreground=ACCENT_COLOR, font=(MONO_FONT[0], 12, "bold"))
     log_text.tag_configure("meta", foreground=MUTED_COLOR)
     log_text.tag_configure("header", font=(MONO_FONT[0], 11, "bold"))
+    log_text.tag_configure("subheader", font=(MONO_FONT[0], 10, "bold"), foreground=MUTED_COLOR)
+    log_text.tag_configure("row", spacing1=1, spacing3=1)
     log_text.tag_configure("divider", foreground="#d2d2d7")
     y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_text.yview)
     y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
