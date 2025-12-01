@@ -519,7 +519,7 @@ def build_gui():
     input_card.grid(row=1, column=0, sticky="ew")
     input_card.columnconfigure(1, weight=1)
 
-    ttk.Label(input_card, text="my ALT (m)", style="CardBody.TLabel").grid(
+    ttk.Label(input_card, text="My ALT (m)", style="CardBody.TLabel").grid(
         row=0, column=0, sticky="e", padx=(0, 10), pady=4
     )
     my_altitude_entry = ttk.Entry(input_card)
