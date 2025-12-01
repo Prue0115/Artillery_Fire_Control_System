@@ -917,7 +917,9 @@ def build_gui():
     def _sync_layout():
         if log_visible["value"]:
             log_frame.update_idletasks()
-            desired_width = log_frame.winfo_reqwidth()
+            content_width = log_body.winfo_reqwidth()
+            scrollbar_width = y_scroll.winfo_reqwidth()
+            desired_width = max(log_frame.winfo_reqwidth(), content_width + scrollbar_width)
             root.columnconfigure(0, weight=1)
             root.columnconfigure(1, weight=0, minsize=desired_width)
         else:
