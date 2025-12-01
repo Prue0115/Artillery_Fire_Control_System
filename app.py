@@ -53,6 +53,8 @@ MONO_FONT = ("SF Mono", 12)
 MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
+# 아이콘 폴더 경로 추가
+ICONS_DIR = BASE_DIR / "icons"
 SYSTEM_FILE_PREFIX = {
     "M109A6": "M109A6",
     "M1129": "M1129",
@@ -344,7 +346,7 @@ def log_calculation(
             "high": high_solutions,
         }
     )
-    render_log(log_text, log_entries, equipment_filter.get())
+    render_log(log_text, log_entries, log_equipment_filter.get())
 
 
 def calculate_and_display(
@@ -641,8 +643,36 @@ def build_gui():
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
-    theme_toggle = ttk.Button(bottom_bar, text="🌞", style="Secondary.TButton")
+
+    # PNG 아이콘 로드
+    try:
+        root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
+        root.dark_icon_base  = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
+        # hover용 확대 아이콘 (≈1.2배, 정수 배율 근사)
+        def make_hover(img: tk.PhotoImage):
+            # 6/5 ≈ 1.2배
+            return img.zoom(6, 6).subsample(5, 5)
+        root.light_icon_hover = make_hover(root.light_icon_base)
+        root.dark_icon_hover  = make_hover(root.dark_icon_base)
+    except Exception as e:
+        messagebox.showerror("아이콘 로드 오류", f"테마 아이콘을 불러오지 못했습니다.\n{e}")
+        root.light_icon_base = root.dark_icon_base = None
+        root.light_icon_hover = root.dark_icon_hover = None
+
+    # 버튼 스타일(hover 시 border 색상 변경 비슷한 느낌)
+    style = ttk.Style()
+    style.configure("ThemeToggle.TButton", padding=(6, 6), relief="solid", borderwidth=1, background=CARD_BG, foreground=ACCENT_COLOR)
+    style.map("ThemeToggle.TButton", background=[("active", "#e6f0ff")])
+
+    theme_toggle = ttk.Button(
+        bottom_bar,
+        text="" if root.light_icon_base else "🌞",
+        style="ThemeToggle.TButton",
+        image=root.light_icon_base if root.light_icon_base else None,
+        cursor="hand2",
+    )
     theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
+
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
     log_toggle_button.grid(row=0, column=2, sticky="e")
 
@@ -733,9 +763,28 @@ def build_gui():
             solution_tables=[low_rows, high_rows],
             log_text=log_text,
         )
-        theme_toggle.configure(text="🌞" if new_theme == "light" else "🌙")
+        # 현재 상태에 맞게 아이콘 갱신(hover 상태 고려)
+        _apply_toggle_icon(new_theme, hover=False)
 
     theme_toggle.configure(command=toggle_theme)
+
+    def _apply_toggle_icon(mode: str, hover: bool):
+        if mode == "light":
+            img = (root.light_icon_hover if hover else root.light_icon_base) if root.light_icon_base else None
+            theme_toggle.configure(image=img, text="" if img else "🌞")
+        else:
+            img = (root.dark_icon_hover if hover else root.dark_icon_base) if root.dark_icon_base else None
+            theme_toggle.configure(image=img, text="" if img else "🌙")
+
+    # hover 이벤트: 색/확대 근사
+    def _on_enter(_e=None):
+        _apply_toggle_icon(theme_var.get(), hover=True)
+
+    def _on_leave(_e=None):
+        _apply_toggle_icon(theme_var.get(), hover=False)
+
+    theme_toggle.bind("<Enter>", _on_enter)
+    theme_toggle.bind("<Leave>", _on_leave)
 
     root.columnconfigure(0, weight=1)
     root.columnconfigure(1, weight=0)
