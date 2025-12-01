@@ -580,8 +580,18 @@ def _add_moon_cutout(img, cx, cy, *, base_color, background_color):
                 img.put(base_color, (x, y))
 
 
+def _build_icon_pulse_frames(icon: tk.PhotoImage):
+    frames = []
+    # Use gentle scaling factors to create a brief pulse animation.
+    scales = [(10, 10), (11, 10), (12, 10), (11, 10), (10, 10)]
+    for num, den in scales:
+        frames.append(icon.zoom(num).subsample(den))
+    return frames
+
+
 def create_theme_icons():
     icons = {}
+    pulses = {}
     size = 28
     center = size // 2
 
@@ -603,8 +613,9 @@ def create_theme_icons():
             )
 
         icons[name] = img
+        pulses[name] = _build_icon_pulse_frames(img)
 
-    return icons
+    return icons, pulses
 
 
 def build_gui():
@@ -697,7 +708,7 @@ def build_gui():
     delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
     theme_var = tk.StringVar(value="light")
-    theme_icons = create_theme_icons()
+    theme_icons, icon_pulses = create_theme_icons()
 
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
@@ -791,6 +802,18 @@ def build_gui():
 
     log_toggle_button.configure(command=toggle_log)
 
+    def animate_theme_pulse(theme_name: str):
+        frames = icon_pulses[theme_name]
+
+        def _step(idx=0):
+            theme_toggle.configure(image=frames[idx])
+            if idx + 1 < len(frames):
+                root.after(28, _step, idx + 1)
+            else:
+                theme_toggle.configure(image=theme_icons[theme_name])
+
+        _step()
+
     def toggle_theme():
         new_theme = "dark" if theme_var.get() == "light" else "light"
         theme_var.set(new_theme)
@@ -800,7 +823,7 @@ def build_gui():
             solution_tables=[low_rows, high_rows],
             log_text=log_text,
         )
-        theme_toggle.configure(image=theme_icons[new_theme])
+        animate_theme_pulse(new_theme)
 
     theme_toggle.configure(command=toggle_theme)
 
