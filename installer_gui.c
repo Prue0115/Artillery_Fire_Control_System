@@ -7,11 +7,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#ifdef _WIN32
+#include <direct.h>
+#endif
+
 #include "gui_dialogs.h"
 
 #ifndef _WIN32
 #include <libgen.h>
 #endif
+
+static int make_dir(const char *p) {
+#ifdef _WIN32
+    return _mkdir(p);
+#else
+    return mkdir(p, 0755);
+#endif
+}
 
 static int mkdir_p(const char *path) {
     char tmp[1024];
@@ -19,14 +31,15 @@ static int mkdir_p(const char *path) {
     size_t len = strlen(tmp);
     if (len == 0) return -1;
     if (tmp[len - 1] == '/') tmp[len - 1] = '\0';
+
     for (char *p = tmp + 1; *p; p++) {
         if (*p == '/') {
             *p = '\0';
-            mkdir(tmp, 0755);
+            make_dir(tmp);
             *p = '/';
         }
     }
-    return mkdir(tmp, 0755) == 0 || errno == EEXIST ? 0 : -1;
+    return make_dir(tmp) == 0 || errno == EEXIST ? 0 : -1;
 }
 
 static int copy_file(const char *src, const char *dst) {
@@ -110,8 +123,10 @@ static int create_launcher(const char *install_dir, int create_shortcut) {
                  "osascript -e 'tell application \"Finder\" to make alias file to POSIX file \"%s\" at POSIX file (path to desktop as text)'",
                  launcher_path);
         system(command);
+#elif defined(_WIN32)
+        printf("바탕화면 바로가기는 macOS/리눅스에서만 생성됩니다. Windows에서는 런처만 설치됩니다.\n");
 #else
-        // Fallback: symlink on Desktop
+        // Fallback: symlink on Desktop (POSIX)
         const char *home = getenv("HOME");
         if (home) {
             char desktop[1024];

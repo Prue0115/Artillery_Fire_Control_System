@@ -5,6 +5,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifdef _WIN32
+#include <direct.h>
+#endif
+
 #include "gui_dialogs.h"
 #include "version.h"
 
@@ -95,7 +99,11 @@ static int ensure_dir(const char *path) {
     if (stat(path, &st) == 0) {
         return S_ISDIR(st.st_mode) ? 0 : -1;
     }
+#ifdef _WIN32
+    return _mkdir(path);
+#else
     return mkdir(path, 0755);
+#endif
 }
 
 static int replace_binary(const char *tmp_path, const char *target_path) {

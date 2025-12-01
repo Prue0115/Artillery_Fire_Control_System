@@ -155,7 +155,10 @@ static int load_tables(const char *system_filter, const char *trajectory_filter,
 
     while ((entry = readdir(dir)) != NULL) {
         if (idx >= MAX_TABLES) break;
+#ifdef DT_DIR
         if (entry->d_type == DT_DIR) continue;
+#endif
+        if (entry->d_name[0] == '.') continue;
 
         char system[MAX_NAME];
         char trajectory[MAX_NAME];
