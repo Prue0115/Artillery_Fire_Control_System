@@ -1,8 +1,10 @@
 # AFCS – Artillery Fire Control System
 AFCS GUI 화면
+
 <img width="588" height="615" alt="image" src="https://github.com/user-attachments/assets/47126343-9d69-4648-a524-c5edc146eaf2" />
 
 장비 목록
+
 <img width="135" height="142" alt="image" src="https://github.com/user-attachments/assets/4f04aeea-7500-4cae-b725-156ab37d273c" />
 
 AFCS GUI 전체
