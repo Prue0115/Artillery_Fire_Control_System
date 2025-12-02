@@ -14,7 +14,7 @@
    <string>AFCS (Qt)</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,0">
     <item>
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="0">
