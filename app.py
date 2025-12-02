@@ -1,9 +1,10 @@
 import csv
 import math
+import sys
 from bisect import bisect_left
 from datetime import datetime
-import tkinter as tk
 from pathlib import Path
+import tkinter as tk
 from tkinter import messagebox, ttk
 
 
@@ -68,6 +69,22 @@ def set_theme(theme_name: str):
     PRESSED_BG = theme["PRESSED_BG"]
     SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]
     PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]
+
+
+def ensure_dpi_awareness():
+    """Enable high-DPI awareness on Windows to avoid blurry rendering."""
+
+    if sys.platform.startswith("win"):
+        try:
+            import ctypes
+
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                # Best-effort: ignore if DPI awareness can't be set on this platform.
+                pass
 
 
 set_theme("light")
@@ -1002,6 +1019,7 @@ def build_gui():
 
 
 def main():
+    ensure_dpi_awareness()
     root = build_gui()
     root.mainloop()
 
