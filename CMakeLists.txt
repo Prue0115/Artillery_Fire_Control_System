@@ -3,7 +3,8 @@ project(AFCSQt LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC OFF)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
@@ -22,15 +23,12 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(AFCSQt
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        ${UI_FILES}
     )
-
-    qt_add_ui_files(AFCSQt ${UI_FILES})
 else()
-    qt5_wrap_ui(UIC_FILES ${UI_FILES})
-
     add_executable(AFCSQt
         ${PROJECT_SOURCES}
-        ${UIC_FILES}
+        ${UI_FILES}
     )
 endif()
 
