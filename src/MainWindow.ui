@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>860</width>
+    <height>640</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>AFCS (Qt)</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1,0">
+    <item>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelSystem">
+        <property name="text">
+         <string>장비</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="systemCombo"/>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="labelMyAlt">
+        <property name="text">
+         <string>My ALT (m)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QLineEdit" name="myAltEdit">
+        <property name="placeholderText">
+         <string>예: 120.0</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelTargetAlt">
+        <property name="text">
+         <string>Target ALT (m)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="targetAltEdit">
+        <property name="placeholderText">
+         <string>예: 80.0</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QLabel" name="labelDistance">
+        <property name="text">
+         <string>Distance (m)</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="3">
+       <widget class="QLineEdit" name="distanceEdit">
+        <property name="placeholderText">
+         <string>예: 3000</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4" rowspan="2">
+       <widget class="QPushButton" name="calculateButton">
+        <property name="text">
+         <string>계산</string>
+        </property>
+        <property name="minimumWidth">
+         <number>120</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="resultsLayout">
+      <item>
+       <widget class="QGroupBox" name="lowGroup">
+        <property name="title">
+         <string>LOW Trajectory</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayoutLow">
+         <item>
+          <widget class="QTableWidget" name="lowTable"/>
+         </item>
+         <item>
+          <widget class="QLabel" name="lowStatusLabel">
+           <property name="text">
+            <string>계산 결과가 여기에 표시됩니다.</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="highGroup">
+        <property name="title">
+         <string>HIGH Trajectory</string>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayoutHigh">
+         <item>
+          <widget class="QTableWidget" name="highTable"/>
+         </item>
+         <item>
+          <widget class="QLabel" name="highStatusLabel">
+           <property name="text">
+            <string>계산 결과가 여기에 표시됩니다.</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="logGroup">
+      <property name="title">
+       <string>기록</string>
+      </property>
+      <layout class="QVBoxLayout" name="verticalLayoutLog">
+       <item>
+        <layout class="QHBoxLayout" name="logFilterLayout">
+         <item>
+          <widget class="QLabel" name="logFilterLabel">
+           <property name="text">
+            <string>장비 필터</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QComboBox" name="logFilterCombo">
+           <item>
+            <property name="text">
+             <string>전체</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>M109A6</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>M1129</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>M119</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>RM-70</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>siala</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QTableWidget" name="logTable"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <layoutdefault spacing="6" margin="9"/>
+  <resources/>
+  <connections/>
+ </widget>
+ <customwidgets/>
+ <resources/>
+ <connections/>
+</ui>
