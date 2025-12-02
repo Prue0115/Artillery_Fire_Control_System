@@ -81,7 +81,7 @@ ETA_WIDTH = 6
 MIL_PER_DEG = 6400 / 360.0
 BASE_DIR = Path(__file__).parent
 RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
-# 아이콘 폴더 경로 추가
+
 ICONS_DIR = BASE_DIR / "icons"
 SYSTEM_FILE_PREFIX = {
     "M109A6": "M109A6",
@@ -91,8 +91,6 @@ SYSTEM_FILE_PREFIX = {
     "siala": "siala",
 }
 
-# 장비별로 고정된 궤적으로만 사격해야 하는 경우를 명시한다.
-# 지정되지 않은 장비는 존재하는 CSV 파일을 기준으로 자동 감지한다.
 SYSTEM_TRAJECTORY_CHARGES = {"M1129": {"low": [], "high": [0, 1, 2]}}
 
 
@@ -471,9 +469,7 @@ def calculate_and_display(
     except ValueError:
         messagebox.showerror("입력 오류", "숫자만 입력하세요.")
         return
-
-    # 고도 차이는 사수 고도에서 목표 고도를 뺀 값으로 계산한다
-    # (목표가 더 높으면 음수, 더 낮으면 양수)
+    
     altitude_delta = my_alt - target_alt
     system = system_var.get()
     system_charges = SYSTEM_TRAJECTORY_CHARGES.get(system, {})
@@ -532,7 +528,6 @@ def apply_styles(root: tk.Tk):
     style = ttk.Style()
     style.theme_use("clam")
 
-    # Global colors
     style.configure("TFrame", background=APP_BG)
     style.configure("Main.TFrame", background=APP_BG)
     style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
@@ -802,7 +797,6 @@ def build_gui():
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
 
-    # PNG 아이콘 로드
     try:
         root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
         root.dark_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
@@ -968,7 +962,7 @@ def build_gui():
             log_entries=log_entries,
             log_equipment_filter=log_equipment_filter,
         )
-        # 현재 상태에 맞게 아이콘 갱신
+
         _apply_toggle_icon(new_theme)
 
     theme_toggle.configure(command=toggle_theme)
