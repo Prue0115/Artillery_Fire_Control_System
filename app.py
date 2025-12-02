@@ -1,6 +1,7 @@
 import csv
 import math
 import sys
+import os
 from bisect import bisect_left
 from datetime import datetime
 from pathlib import Path
@@ -1018,9 +1019,26 @@ def build_gui():
     return root
 
 
+def resource_path(relative_path):
+    """ PyInstaller로 빌드된 경우 올바른 경로 반환 """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 def main():
     ensure_dpi_awareness()
     root = build_gui()
+    
+    # tkinter 윈도우 아이콘 설정
+    try:
+        icon_path = resource_path('icons/afcs.ico')
+        root.iconbitmap(icon_path)
+    except Exception as e:
+        print(f"아이콘 로드 실패: {e}")
+    
     root.mainloop()
 
 
