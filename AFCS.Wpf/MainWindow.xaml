@@ -5,9 +5,9 @@
         Height="650" Width="920"
         Background="{StaticResource CardBackground}">
     <Grid Margin="16" RowDefinitions="Auto,*,Auto">
-        <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" >
+        <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
             <Grid ColumnDefinitions="2*,2*,2*,2*" RowDefinitions="Auto,Auto">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <StackPanel Orientation="Horizontal">
                     <TextBlock Text="장비" VerticalAlignment="Center" Margin="0,0,4,0" />
                     <ComboBox x:Name="EquipmentCombo" Width="140" SelectionChanged="OnEquipmentChanged" />
                     <TextBlock Text="사거리 (m)" VerticalAlignment="Center" Margin="12,0,4,0" />
@@ -18,17 +18,17 @@
                     <TextBox x:Name="TargetAltitudeBox" Width="100" />
                     <Button Content="계산" Width="100" Margin="12,0,0,0" Click="OnCalculateClicked" Background="{StaticResource AccentBrush}" Foreground="White" />
                 </StackPanel>
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
                     <TextBlock Text="저각 장약" VerticalAlignment="Center" />
-                    <ComboBox x:Name="LowChargeCombo" Width="140" />
+                    <ComboBox x:Name="LowChargeCombo" Width="140" Margin="8,0,0,0" />
                     <TextBlock Text="고각 장약" VerticalAlignment="Center" Margin="12,0,0,0" />
-                    <ComboBox x:Name="HighChargeCombo" Width="140" />
+                    <ComboBox x:Name="HighChargeCombo" Width="140" Margin="8,0,0,0" />
                     <TextBlock x:Name="AltitudeDelta" Margin="16,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Margin="0,12,0,12" ColumnDefinitions="*,*" ColumnSpacing="12">
+        <Grid Grid.Row="1" Margin="0,12,0,12" ColumnDefinitions="*,*">
             <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
                 <DockPanel>
                     <TextBlock Text="저각" FontWeight="Bold" DockPanel.Dock="Top" />
@@ -44,7 +44,7 @@
                     <TextBlock x:Name="LowStatus" Foreground="Gray" Margin="0,8,0,0" />
                 </DockPanel>
             </Border>
-            <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Grid.Column="1">
+            <Border Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Grid.Column="1" Margin="12,0,0,0">
                 <DockPanel>
                     <TextBlock Text="고각" FontWeight="Bold" DockPanel.Dock="Top" />
                     <ListView x:Name="HighResults" Margin="0,8,0,0">
@@ -62,9 +62,9 @@
         </Grid>
 
         <Border Grid.Row="2" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
-            <StackPanel Orientation="Horizontal" Spacing="12">
+            <StackPanel Orientation="Horizontal">
                 <TextBlock Text="rangeTables 폴더의 데이터를 사용하여 WPF에서 계산을 수행합니다." />
-                <TextBlock Text="CSV 데이터가 없으면 결과가 표시되지 않습니다." Foreground="Gray" />
+                <TextBlock Text="CSV 데이터가 없으면 결과가 표시되지 않습니다." Foreground="Gray" Margin="12,0,0,0" />
             </StackPanel>
         </Border>
     </Grid>
