@@ -2,7 +2,7 @@ import os
 import sys
 from datetime import datetime
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 
 from afcs.equipment import EquipmentRegistry
 from afcs.range_tables import available_charges, find_solutions
@@ -29,7 +29,7 @@ from afcs.ui_theme import (
     ensure_dpi_awareness,
     set_theme,
 )
-from afcs.versioning import get_version
+from afcs.versioning import get_version, update_version
 
 
 set_theme("light")
@@ -66,6 +66,27 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
             row["ch"].config(text="—", fg=MUTED_COLOR)
             row["mill"].config(text="—", fg=MUTED_COLOR)
             row["eta"].config(text="—", fg=MUTED_COLOR)
+
+
+def prompt_version_update(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
+    new_version = simpledialog.askstring(
+        "버전 업데이트",
+        "새 버전을 입력하세요",
+        initialvalue=version_var.get(),
+        parent=root,
+    )
+    if new_version is None:
+        return
+
+    try:
+        normalized = update_version(new_version)
+    except ValueError:
+        messagebox.showerror("버전 업데이트", "빈 문자열은 버전으로 사용할 수 없습니다.")
+        return
+
+    version_var.set(normalized)
+    title_label.config(text=f"AFCS {normalized}")
+    messagebox.showinfo("버전 업데이트", f"버전이 {normalized}(으)로 저장되었습니다.")
 def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
     for child in log_body.winfo_children():
         child.destroy()
@@ -504,13 +525,15 @@ def build_gui():
     root.option_add("*Font", BODY_FONT)
     apply_styles(root)
 
+    version_var = tk.StringVar(value=VERSION)
+
     main = ttk.Frame(root, style="Main.TFrame", padding=20)
     main.grid(row=0, column=0, sticky="nsew")
 
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
-    title = ttk.Label(header, text=f"AFCS {VERSION}", style="Title.TLabel")
+    title = ttk.Label(header, text=f"AFCS {version_var.get()}", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
@@ -534,6 +557,14 @@ def build_gui():
         font=BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
+
+    update_version_button = ttk.Button(
+        header,
+        text="버전 업데이트",
+        style="Secondary.TButton",
+        command=lambda: prompt_version_update(root, version_var, title),
+    )
+    update_version_button.grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")

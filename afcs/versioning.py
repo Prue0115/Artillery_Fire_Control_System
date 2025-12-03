@@ -16,3 +16,12 @@ def get_version() -> str:
 
 def set_version(version: str):
     VERSION_FILE.write_text(version.strip(), encoding="utf-8")
+
+
+def update_version(new_version: str) -> str:
+    normalized = new_version.strip()
+    if not normalized:
+        raise ValueError("Version cannot be empty")
+
+    set_version(normalized)
+    return normalized
