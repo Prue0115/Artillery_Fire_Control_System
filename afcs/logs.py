@@ -44,7 +44,7 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
         ttk.Label(
             card,
             text=f"시간 {entry['timestamp'].strftime('%H:%M')} · 장비 {entry['system']}",
-            style="LogHeader.TLabel",
+            style="LogTitle.TLabel",
             anchor="w",
         ).grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
 
@@ -70,7 +70,7 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
             ttk.Label(
                 table,
                 text=text,
-                style="LogHeader.TLabel",
+                style="LogTitle.TLabel",
                 anchor="w",
             ).grid(row=0, column=column, columnspan=columnspan, sticky="w")
 

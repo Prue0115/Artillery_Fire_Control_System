@@ -1,5 +1,5 @@
 """Application theming utilities."""
-# pyright: reportConstantRedefinition=false
+# pyright: reportConstantRedefinition=false, reportPossiblyUnboundVariable=false
 import ctypes
 import sys
 from typing import Mapping, Sequence
@@ -64,18 +64,18 @@ def set_theme(theme_name: str) -> None:
     theme = THEMES[theme_name]
     global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
     global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
-    APP_BG = theme["APP_BG"]
-    CARD_BG = theme["CARD_BG"]
-    TEXT_COLOR = theme["TEXT_COLOR"]
-    MUTED_COLOR = theme["MUTED_COLOR"]
-    ACCENT_COLOR = theme["ACCENT_COLOR"]
-    BORDER_COLOR = theme["BORDER_COLOR"]
-    INPUT_BG = theme["INPUT_BG"]
-    INPUT_BORDER = theme["INPUT_BORDER"]
-    HOVER_BG = theme["HOVER_BG"]
-    PRESSED_BG = theme["PRESSED_BG"]
-    SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]
-    PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]
+    APP_BG = theme["APP_BG"]  # pyright: ignore[reportConstantRedefinition]
+    CARD_BG = theme["CARD_BG"]  # pyright: ignore[reportConstantRedefinition]
+    TEXT_COLOR = theme["TEXT_COLOR"]  # pyright: ignore[reportConstantRedefinition]
+    MUTED_COLOR = theme["MUTED_COLOR"]  # pyright: ignore[reportConstantRedefinition]
+    ACCENT_COLOR = theme["ACCENT_COLOR"]  # pyright: ignore[reportConstantRedefinition]
+    BORDER_COLOR = theme["BORDER_COLOR"]  # pyright: ignore[reportConstantRedefinition]
+    INPUT_BG = theme["INPUT_BG"]  # pyright: ignore[reportConstantRedefinition]
+    INPUT_BORDER = theme["INPUT_BORDER"]  # pyright: ignore[reportConstantRedefinition]
+    HOVER_BG = theme["HOVER_BG"]  # pyright: ignore[reportConstantRedefinition]
+    PRESSED_BG = theme["PRESSED_BG"]  # pyright: ignore[reportConstantRedefinition]
+    SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]  # pyright: ignore[reportConstantRedefinition]
+    PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]  # pyright: ignore[reportConstantRedefinition]
 
 
 def ensure_dpi_awareness() -> None:
@@ -83,8 +83,6 @@ def ensure_dpi_awareness() -> None:
 
     if sys.platform.startswith("win"):
         try:
-            import ctypes
-
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except Exception:
             try:
@@ -189,8 +187,12 @@ def apply_styles(root: tk.Tk) -> None:
         "borderColor": BORDER_COLOR,
     }
     for key, value in combobox_popup_options.items():
-        root.option_add(f"*TCombobox*Listbox.{key}", value)
-        root.option_add(f"*Combobox*Listbox.{key}", value)
+        root.option_add(  # pyright: ignore[reportUnknownMemberType]
+            f"*TCombobox*Listbox.{key}", value
+        )
+        root.option_add(  # pyright: ignore[reportUnknownMemberType]
+            f"*Combobox*Listbox.{key}", value
+        )
 
     style.configure(
         "Primary.TButton",
@@ -252,8 +254,8 @@ def apply_styles(root: tk.Tk) -> None:
 def refresh_solution_rows(rows: Sequence[Mapping[str, ttk.Label]]) -> None:
     for row in rows:
         for key in ("ch", "mill", "eta"):
-            widget = row[key]
-            text = widget.cget("text")
+            widget: ttk.Label = row[key]
+            text: str = str(widget.cget("text"))
             widget.configure(style="TableCellMuted.TLabel" if text == "—" else "TableCell.TLabel")
 
 
