@@ -1,7 +1,10 @@
 from datetime import datetime
+from typing import Callable, TypedDict
+
 import tkinter as tk
 from tkinter import ttk
 
+from .calculations import Solution
 from .theme import (
     ACCENT_COLOR,
     CARD_BG,
@@ -14,7 +17,17 @@ from .theme import (
 )
 
 
-def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
+class LogEntry(TypedDict):
+    timestamp: datetime
+    my_alt: float
+    target_alt: float
+    distance: float
+    system: str
+    low: list[Solution]
+    high: list[Solution]
+
+
+def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: str) -> None:
     log_body.configure(bg=CARD_BG)
     for child in log_body.winfo_children():
         child.destroy()
@@ -68,7 +81,7 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
             table.grid_columnconfigure(col, weight=weight, minsize=0)
         table.grid_columnconfigure(3, minsize=16)
 
-        def _header(text, column, columnspan=1):
+        def _header(text: str, column: int, columnspan: int = 1) -> None:
             tk.Label(
                 table,
                 text=text,
@@ -81,7 +94,7 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
         _header("LOW", 0, 3)
         _header("HIGH", 4, 3)
 
-        def _column_header(label_text, column, width):
+        def _column_header(label_text: str, column: int, width: int) -> None:
             tk.Label(
                 table,
                 text=label_text,
@@ -96,14 +109,14 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
             _column_header(label_text, idx_col, width)
             _column_header(label_text, idx_col + 4, width)
 
-        low_sorted = sorted(entry["low"], key=lambda s: s["charge"])
-        high_sorted = sorted(entry["high"], key=lambda s: s["charge"])
+        low_sorted: list[Solution] = sorted(entry["low"], key=lambda s: s["charge"])
+        high_sorted: list[Solution] = sorted(entry["high"], key=lambda s: s["charge"])
 
-        low_map = {solution["charge"]: solution for solution in low_sorted}
-        high_map = {solution["charge"]: solution for solution in high_sorted}
-        charges = sorted(set(low_map.keys()) | set(high_map.keys())) or [None]
+        low_map: dict[int, Solution] = {solution["charge"]: solution for solution in low_sorted}
+        high_map: dict[int, Solution] = {solution["charge"]: solution for solution in high_sorted}
+        charges: list[int | None] = sorted(set(low_map.keys()) | set(high_map.keys())) or [None]
 
-        def _row(value, width, row_idx, column):
+        def _row(value: str, width: int, row_idx: int, column: int) -> None:
             tk.Label(
                 table,
                 text=value,
@@ -118,7 +131,7 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
             low = low_map.get(charge)
             high = high_map.get(charge)
 
-            def fmt(solution, key, width):
+            def fmt(solution: Solution | None, key: str, width: int) -> str:
                 if not solution:
                     return "—"
                 if key == "mill":
@@ -137,16 +150,16 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
 
 def log_calculation(
     log_body: ttk.Frame,
-    log_entries: list,
+    log_entries: list[LogEntry],
     equipment_filter: tk.StringVar,
     my_alt: float,
     target_alt: float,
     distance: float,
     system: str,
-    low_solutions,
-    high_solutions,
-    sync_layout=None,
-):
+    low_solutions: list[Solution],
+    high_solutions: list[Solution],
+    sync_layout: Callable[[], None] | None = None,
+) -> None:
     log_entries.append(
         {
             "timestamp": datetime.now(),
