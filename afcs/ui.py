@@ -1,11 +1,13 @@
 import os
 import sys
 import tkinter as tk
+import webbrowser
 from tkinter import messagebox, ttk
 
 from .calculations import available_charges, find_solutions, SYSTEM_TRAJECTORY_CHARGES
 from .config import ICONS_DIR
 from .logs import log_calculation, render_log
+from .update import UpdateCheckError, check_for_updates
 from .theme import (
     ACCENT_COLOR,
     APP_BG,
@@ -27,6 +29,7 @@ from .theme import (
     refresh_solution_rows,
     set_theme,
 )
+from .version import LATEST_RELEASE_PAGE, __version__
 
 
 set_theme("light")
@@ -192,7 +195,8 @@ def build_gui():
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
-    title = ttk.Label(header, text="AFCS 1.25.3", style="Title.TLabel")
+    header.columnconfigure(2, weight=0)
+    title = ttk.Label(header, text=f"AFCS {__version__}", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
@@ -214,6 +218,27 @@ def build_gui():
         font=BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
+
+    def _check_updates(show_latest_message: bool = False):
+        try:
+            result = check_for_updates()
+        except UpdateCheckError as exc:
+            if show_latest_message:
+                messagebox.showerror("업데이트 확인 실패", str(exc))
+            return
+
+        if result.is_newer:
+            should_open = messagebox.askyesno(
+                "업데이트 발견",
+                f"새 버전 {result.latest_version}이(가) 있습니다.\n다운로드 페이지를 여시겠습니까?",
+            )
+            if should_open:
+                webbrowser.open(result.download_url or LATEST_RELEASE_PAGE)
+        elif show_latest_message:
+            messagebox.showinfo(
+                "최신 버전",
+                f"현재 버전 {__version__}은(는) 최신입니다.",
+            )
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")
@@ -474,6 +499,8 @@ def build_gui():
             _sync_layout,
         )
     )
+
+    root.after(500, _check_updates)
 
     return root
 

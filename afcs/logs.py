@@ -15,6 +15,7 @@ from .theme import (
 
 
 def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
+    log_body.configure(bg=CARD_BG)
     for child in log_body.winfo_children():
         child.destroy()
 
