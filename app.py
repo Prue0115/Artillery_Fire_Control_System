@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
@@ -29,7 +30,7 @@ from afcs.ui_theme import (
     ensure_dpi_awareness,
     set_theme,
 )
-from afcs.versioning import get_version, update_version
+from afcs.versioning import get_latest_release_version, get_version, update_version
 
 
 set_theme("light")
@@ -87,6 +88,50 @@ def prompt_version_update(root: tk.Tk, version_var: tk.StringVar, title_label: t
     version_var.set(normalized)
     title_label.config(text=f"AFCS {normalized}")
     messagebox.showinfo("버전 업데이트", f"버전이 {normalized}(으)로 저장되었습니다.")
+
+
+def check_latest_release_async(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
+    def _apply_latest(latest_version: str | None):
+        if not latest_version:
+            return
+
+        current = version_var.get().strip()
+        if latest_version == current:
+            return
+
+        if not root.winfo_exists():
+            return
+
+        if not messagebox.askyesno(
+            "업데이트 확인",
+            f"최신 릴리즈 {latest_version} 버전이 있습니다.\n"
+            f"현재 버전은 {current}입니다. 업데이트할까요?",
+            parent=root,
+        ):
+            return
+
+        try:
+            normalized = update_version(latest_version)
+        except ValueError:
+            messagebox.showerror("버전 업데이트", "빈 문자열은 버전으로 사용할 수 없습니다.")
+            return
+
+        version_var.set(normalized)
+        title_label.config(text=f"AFCS {normalized}")
+        messagebox.showinfo("버전 업데이트", f"버전이 {normalized}(으)로 저장되었습니다.")
+
+    def _worker():
+        try:
+            latest = get_latest_release_version()
+        except Exception as exc:  # pragma: no cover - best-effort network call
+            print(f"최신 릴리즈 조회 실패: {exc}")
+            return
+
+        root.after(0, lambda: _apply_latest(latest))
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
     for child in log_body.winfo_children():
         child.destroy()
@@ -565,6 +610,7 @@ def build_gui():
         command=lambda: prompt_version_update(root, version_var, title),
     )
     update_version_button.grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
+    root.after(500, lambda: check_latest_release_async(root, version_var, title))
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")
