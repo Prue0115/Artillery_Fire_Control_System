@@ -70,7 +70,7 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
             ttk.Label(
                 table,
                 text=text,
-                style="LogHeader.TLabel",
+                style="TableSection.TLabel",
                 anchor="w",
             ).grid(row=0, column=column, columnspan=columnspan, sticky="w")
 

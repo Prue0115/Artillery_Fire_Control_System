@@ -5,6 +5,8 @@ import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+import webbrowser
+from tkinter import messagebox
 
 from .version import LATEST_RELEASE_API, LATEST_RELEASE_PAGE, __version__
 
@@ -62,3 +64,30 @@ def check_for_updates(timeout: float = 5.0) -> UpdateResult:
 
     is_newer = _is_newer(tag_name, __version__)
     return UpdateResult(latest_version=tag_name, download_url=html_url, is_newer=is_newer)
+
+
+def prompt_for_updates(show_latest_message: bool = False) -> None:
+    """Check for updates and surface dialogs for the user.
+
+    UI-specific prompting lives here to keep the main UI module focused on layout.
+    """
+
+    try:
+        result = check_for_updates()
+    except UpdateCheckError as exc:
+        if show_latest_message:
+            messagebox.showerror("업데이트 확인 실패", str(exc))
+        return
+
+    if result.is_newer:
+        should_open = messagebox.askyesno(
+            "업데이트 발견",
+            f"새 버전 {result.latest_version}이(가) 있습니다.\n다운로드 페이지를 여시겠습니까?",
+        )
+        if should_open:
+            webbrowser.open(result.download_url or LATEST_RELEASE_PAGE)
+    elif show_latest_message:
+        messagebox.showinfo(
+            "최신 버전",
+            f"현재 버전 {__version__}은(는) 최신입니다.",
+        )

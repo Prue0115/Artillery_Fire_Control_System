@@ -140,6 +140,14 @@ def apply_styles(root: tk.Tk):
     )
 
     style.configure(
+        "TableSection.TLabel",
+        background=CARD_BG,
+        foreground=TEXT_COLOR,
+        font=(BODY_FONT[0], 12, "bold"),
+        anchor="w",
+    )
+
+    style.configure(
         "TEntry",
         fieldbackground=INPUT_BG,
         background=INPUT_BG,
