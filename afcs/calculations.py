@@ -1,6 +1,6 @@
 import csv
 from bisect import bisect_left
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from .config import RANGE_TABLE_DIR
 
@@ -111,7 +111,7 @@ class RangeTable:
         neighbors.sort(key=lambda r: r["range"])
         return neighbors
 
-    def _interpolate(self, key: str, distance: float) -> float:
+    def _interpolate(self, key: Literal["mill", "diff100m", "eta"], distance: float) -> float:
         neighbors = self._neighbor_rows(distance)
         if not neighbors:
             raise ValueError("적절한 범위를 찾을 수 없습니다")

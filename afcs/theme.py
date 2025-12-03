@@ -1,3 +1,6 @@
+"""Application theming utilities."""
+# pyright: reportConstantRedefinition=false
+import ctypes
 import sys
 from typing import Mapping, Sequence
 
@@ -57,7 +60,7 @@ MILL_WIDTH = 12
 ETA_WIDTH = 6
 
 
-def set_theme(theme_name: str):
+def set_theme(theme_name: str) -> None:
     theme = THEMES[theme_name]
     global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
     global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
@@ -75,7 +78,7 @@ def set_theme(theme_name: str):
     PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]
 
 
-def ensure_dpi_awareness():
+def ensure_dpi_awareness() -> None:
     """Enable high-DPI awareness on Windows to avoid blurry rendering."""
 
     if sys.platform.startswith("win"):
@@ -90,7 +93,7 @@ def ensure_dpi_awareness():
                 pass
 
 
-def apply_styles(root: tk.Tk):
+def apply_styles(root: tk.Tk) -> None:
     style = ttk.Style()
     style.theme_use("clam")
 
@@ -254,7 +257,7 @@ def refresh_solution_rows(rows: Sequence[Mapping[str, ttk.Label]]) -> None:
             widget.configure(style="TableCellMuted.TLabel" if text == "—" else "TableCell.TLabel")
 
 
-def configure_log_canvas(canvas: tk.Canvas):
+def configure_log_canvas(canvas: tk.Canvas) -> None:
     canvas.configure(
         bg=CARD_BG,
         highlightbackground=BORDER_COLOR,
