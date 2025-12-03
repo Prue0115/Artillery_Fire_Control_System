@@ -1,281 +1,41 @@
-import csv
-import math
-import sys
 import os
-from bisect import bisect_left
+import sys
+import threading
 from datetime import datetime
-from pathlib import Path
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 
-
-THEMES = {
-    "light": {
-        "APP_BG": "#f5f5f7",
-        "CARD_BG": "#ffffff",
-        "TEXT_COLOR": "#1d1d1f",
-        "MUTED_COLOR": "#6e6e73",
-        "ACCENT_COLOR": "#007aff",
-        "BORDER_COLOR": "#e5e5ea",
-        "INPUT_BG": "#ffffff",
-        "INPUT_BORDER": "#d1d1d6",
-        "HOVER_BG": "#e6f0ff",
-        "PRESSED_BG": "#d6e5ff",
-        "SECONDARY_ACTIVE": "#f0f4ff",
-        "PRIMARY_PRESSED": "#0060df",
-    },
-    "dark": {
-        "APP_BG": "#1c1c1e",
-        "CARD_BG": "#2c2c2e",
-        "TEXT_COLOR": "#f2f2f7",
-        "MUTED_COLOR": "#8e8e93",
-        "ACCENT_COLOR": "#0a84ff",
-        "BORDER_COLOR": "#3a3a3c",
-        "INPUT_BG": "#2c2c2e",
-        "INPUT_BORDER": "#4a4a4c",
-        "HOVER_BG": "#0f2f55",
-        "PRESSED_BG": "#0c2441",
-        "SECONDARY_ACTIVE": "#2f2f33",
-        "PRIMARY_PRESSED": "#07294d",
-    },
-}
-
-APP_BG = ""
-CARD_BG = ""
-TEXT_COLOR = ""
-MUTED_COLOR = ""
-ACCENT_COLOR = ""
-BORDER_COLOR = ""
-INPUT_BG = ""
-INPUT_BORDER = ""
-HOVER_BG = ""
-PRESSED_BG = ""
-SECONDARY_ACTIVE = ""
-PRIMARY_PRESSED = ""
-
-
-def set_theme(theme_name: str):
-    theme = THEMES[theme_name]
-    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
-    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
-    APP_BG = theme["APP_BG"]
-    CARD_BG = theme["CARD_BG"]
-    TEXT_COLOR = theme["TEXT_COLOR"]
-    MUTED_COLOR = theme["MUTED_COLOR"]
-    ACCENT_COLOR = theme["ACCENT_COLOR"]
-    BORDER_COLOR = theme["BORDER_COLOR"]
-    INPUT_BG = theme["INPUT_BG"]
-    INPUT_BORDER = theme["INPUT_BORDER"]
-    HOVER_BG = theme["HOVER_BG"]
-    PRESSED_BG = theme["PRESSED_BG"]
-    SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]
-    PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]
-
-
-def ensure_dpi_awareness():
-    """Enable high-DPI awareness on Windows to avoid blurry rendering."""
-
-    if sys.platform.startswith("win"):
-        try:
-            import ctypes
-
-            ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        except Exception:
-            try:
-                ctypes.windll.user32.SetProcessDPIAware()
-            except Exception:
-                # Best-effort: ignore if DPI awareness can't be set on this platform.
-                pass
+from afcs.equipment import EquipmentRegistry
+from afcs.range_tables import available_charges, find_solutions
+from afcs.ui_theme import (
+    ACCENT_COLOR,
+    APP_BG,
+    BODY_FONT,
+    CARD_BG,
+    CH_WIDTH,
+    ETA_WIDTH,
+    HOVER_BG,
+    ICONS_DIR,
+    INPUT_BG,
+    INPUT_BORDER,
+    MILL_WIDTH,
+    MONO_FONT,
+    MUTED_COLOR,
+    PRESSED_BG,
+    PRIMARY_PRESSED,
+    SECONDARY_ACTIVE,
+    TEXT_COLOR,
+    THEMES,
+    TITLE_FONT,
+    ensure_dpi_awareness,
+    set_theme,
+)
+from afcs.versioning import fetch_latest_release, get_version, update_version
 
 
 set_theme("light")
-TITLE_FONT = ("SF Pro Display", 18, "bold")
-BODY_FONT = ("SF Pro Text", 12)
-MONO_FONT = ("SF Mono", 12)
-CH_WIDTH = 4
-MILL_WIDTH = 12
-ETA_WIDTH = 6
-
-MIL_PER_DEG = 6400 / 360.0
-BASE_DIR = Path(__file__).parent
-RANGE_TABLE_DIR = BASE_DIR / "rangeTables"
-
-ICONS_DIR = BASE_DIR / "icons"
-SYSTEM_FILE_PREFIX = {
-    "M109A6": "M109A6",
-    "M1129": "M1129",
-    "M119": "M119",
-    "RM-70": "RM70",
-    "siala": "siala",
-}
-
-SYSTEM_TRAJECTORY_CHARGES = {"M1129": {"low": [], "high": [0, 1, 2]}}
-
-
-class RangeTable:
-    def __init__(self, system: str, trajectory: str, charge: int):
-        self.system = system
-        self.trajectory = trajectory
-        self.charge = charge
-        prefix = SYSTEM_FILE_PREFIX.get(system, system)
-        self.path = RANGE_TABLE_DIR / f"{prefix}_rangeTable_{trajectory}_{charge}.csv"
-        self.rows = self._load_rows()
-
-    def _load_rows(self):
-        with self.path.open("r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            rows = []
-            for line_no, row in enumerate(reader, start=1):
-                # 키 공백 제거 및 None 처리
-                cleaned = { (key.strip() if key else ""): (value.strip() if value is not None else "") for key, value in row.items() }
-                try:
-                    r = float(cleaned.get("range", ""))
-                    mill = float(cleaned.get("mill", ""))
-                    diff100m = float(cleaned.get("diff100m", ""))
-                    eta = float(cleaned.get("eta", ""))
-                except (ValueError, TypeError):
-                    # 숫자 변환 불가(빈값 포함)하면 해당 행은 건너뜀
-                    continue
-                rows.append({"range": r, "mill": mill, "diff100m": diff100m, "eta": eta})
-        return rows
-
-    def supports_range(self, distance: float) -> bool:
-        if not self.rows:
-            return False
-        distances = [row["range"] for row in self.rows]
-        return min(distances) <= distance <= max(distances)
-
-    def calculate(self, distance: float, altitude_delta: float):
-        if not self.supports_range(distance):
-            raise ValueError("거리 밖입니다")
-
-        base_mill = self._interpolate("mill", distance)
-        diff100m = self._interpolate("diff100m", distance)
-        eta = self._interpolate("eta", distance)
-
-        mill_adjust = (altitude_delta / 100.0) * diff100m
-        final_mill = base_mill + mill_adjust
-
-        return {
-            "mill": final_mill,
-            "eta": eta,
-            "charge": self.charge,
-            "base_mill": base_mill,
-            "diff100m": diff100m,
-        }
-
-    def _find_bounds(self, distance: float):
-        lower = None
-        upper = None
-        for row in self.rows:
-            if row["range"] <= distance:
-                lower = row
-            if row["range"] >= distance:
-                upper = row
-                break
-        if lower is None or upper is None:
-            raise ValueError("적절한 범위를 찾을 수 없습니다")
-        return lower, upper
-
-    def _neighbor_rows(self, distance: float):
-        ranges = [row["range"] for row in self.rows]
-        idx = bisect_left(ranges, distance)
-
-        neighbors = []
-        if idx > 0:
-            neighbors.append(self.rows[idx - 1])
-        if idx < len(self.rows):
-            neighbors.append(self.rows[idx])
-
-        remaining = []
-        if idx - 2 >= 0:
-            remaining.append(self.rows[idx - 2])
-        if idx + 1 < len(self.rows):
-            remaining.append(self.rows[idx + 1])
-
-        remaining.sort(key=lambda r: abs(r["range"] - distance))
-        for row in remaining:
-            if row not in neighbors:
-                neighbors.append(row)
-            if len(neighbors) >= 3:
-                break
-
-        neighbors.sort(key=lambda r: r["range"])
-        return neighbors
-
-    def _interpolate(self, key: str, distance: float) -> float:
-        neighbors = self._neighbor_rows(distance)
-        if not neighbors:
-            raise ValueError("적절한 범위를 찾을 수 없습니다")
-
-        if len(neighbors) == 1:
-            return neighbors[0][key]
-        if len(neighbors) == 2 or neighbors[0]["range"] == neighbors[1]["range"]:
-            lower, upper = neighbors[0], neighbors[1]
-            if upper["range"] == lower["range"]:
-                return lower[key]
-            ratio = (distance - lower["range"]) / (upper["range"] - lower["range"])
-            return lower[key] + ratio * (upper[key] - lower[key])
-
-        x0, x1, x2 = (row["range"] for row in neighbors[:3])
-        y0, y1, y2 = (row[key] for row in neighbors[:3])
-
-        def basis(x, a, b):
-            return (x - a) / (b - a) if b != a else 0.0
-
-        t0 = basis(distance, x1, x0) * basis(distance, x2, x0)
-        t1 = basis(distance, x0, x1) * basis(distance, x2, x1)
-        t2 = basis(distance, x0, x2) * basis(distance, x1, x2)
-        return y0 * t0 + y1 * t1 + y2 * t2
-
-
-def available_charges(system: str, trajectory: str):
-    prefix = SYSTEM_FILE_PREFIX.get(system, system)
-    pattern = f"{prefix}_rangeTable_{trajectory}_"
-    charges = []
-    for csv_path in RANGE_TABLE_DIR.glob(f"{pattern}*.csv"):
-        name = csv_path.stem
-        if not name.startswith(pattern):
-            continue
-        suffix = name.replace(pattern, "", 1)
-        if suffix.isdigit():
-            charges.append(int(suffix))
-    return sorted(set(charges))
-
-
-def find_solutions(
-    distance: float,
-    altitude_delta: float,
-    trajectory: str,
-    system: str = "M109A6",
-    limit: int = 3,
-    charges: list[int] | None = None,
-):
-    solutions = []
-    if charges is None:
-        charges = available_charges(system, trajectory)
-    if not charges:
-        return solutions
-    for charge in charges:
-        try:
-            table = RangeTable(system, trajectory, charge)
-        except FileNotFoundError:
-            continue
-        if not table.supports_range(distance):
-            continue
-        try:
-            solution = table.calculate(distance, altitude_delta)
-        except ValueError:
-            continue
-        solutions.append(solution)
-        if len(solutions) >= limit:
-            break
-    return solutions
-
-
-def find_solution(distance: float, altitude_delta: float, trajectory: str, system: str = "M109A6"):
-    solutions = find_solutions(distance, altitude_delta, trajectory, system=system, limit=1)
-    return solutions[0] if solutions else None
+VERSION = get_version()
+registry = EquipmentRegistry()
 
 
 def format_solution_list(title: str, solutions):
@@ -307,6 +67,55 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
             row["ch"].config(text="—", fg=MUTED_COLOR)
             row["mill"].config(text="—", fg=MUTED_COLOR)
             row["eta"].config(text="—", fg=MUTED_COLOR)
+
+
+def prompt_version_update(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
+    new_version = simpledialog.askstring(
+        "버전 업데이트",
+        "새 버전을 입력하세요",
+        initialvalue=version_var.get(),
+        parent=root,
+    )
+    if new_version is None:
+        return
+
+    try:
+        normalized = update_version(new_version)
+    except ValueError:
+        messagebox.showerror("버전 업데이트", "빈 문자열은 버전으로 사용할 수 없습니다.")
+        return
+
+    version_var.set(normalized)
+    title_label.config(text=f"AFCS {normalized}")
+    messagebox.showinfo("버전 업데이트", f"버전이 {normalized}(으)로 저장되었습니다.")
+
+
+def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
+    def _prompt_update(release):
+        latest_version = (release.get("version") or "").strip()
+        if not latest_version or latest_version == version_var.get().strip():
+            return
+
+        lines = [f"GitHub 최신 릴리즈: {latest_version}"]
+        release_url = release.get("url")
+        if release_url:
+            lines.append(f"다운로드: {release_url}")
+        lines.append("버전을 업데이트하시겠습니까?")
+
+        if not messagebox.askyesno("업데이트 확인", "\n".join(lines), parent=root):
+            return
+
+        normalized = update_version(latest_version)
+        version_var.set(normalized)
+        title_label.config(text=f"AFCS {normalized}")
+        messagebox.showinfo("버전 업데이트", f"버전이 {normalized}(으)로 저장되었습니다.")
+
+    def _worker():
+        release = fetch_latest_release()
+        if release:
+            root.after(0, lambda: _prompt_update(release))
+
+    threading.Thread(target=_worker, daemon=True).start()
 def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
     for child in log_body.winfo_children():
         child.destroy()
@@ -490,17 +299,30 @@ def calculate_and_display(
     
     altitude_delta = my_alt - target_alt
     system = system_var.get()
-    system_charges = SYSTEM_TRAJECTORY_CHARGES.get(system, {})
+    equipment = registry.get(system)
+    if equipment is None:
+        messagebox.showerror("장비 오류", f"'{system}' 장비 정보를 찾을 수 없습니다.")
+        return
 
-    low_override = system_charges.get("low")
-    high_override = system_charges.get("high")
+    equipment_charges = equipment.charges_override
+    low_override = equipment_charges.get("low") if equipment_charges else None
+    high_override = equipment_charges.get("high") if equipment_charges else None
 
-    low_charges = low_override if low_override is not None else available_charges(system, "low")
-    high_charges = high_override if high_override is not None else available_charges(system, "high")
+    low_charges = (
+        low_override if low_override is not None else available_charges(equipment, "low")
+    )
+    high_charges = (
+        high_override if high_override is not None else available_charges(equipment, "high")
+    )
 
     if low_charges:
         low_solutions = find_solutions(
-            distance, altitude_delta, "low", system=system, limit=3, charges=low_charges
+            distance,
+            altitude_delta,
+            "low",
+            equipment=equipment,
+            limit=3,
+            charges=low_charges,
         )
         low_message = None
     else:
@@ -513,7 +335,12 @@ def calculate_and_display(
 
     if high_charges:
         high_solutions = find_solutions(
-            distance, altitude_delta, "high", system=system, limit=3, charges=high_charges
+            distance,
+            altitude_delta,
+            "high",
+            equipment=equipment,
+            limit=3,
+            charges=high_charges,
         )
         high_message = None
     else:
@@ -727,13 +554,15 @@ def build_gui():
     root.option_add("*Font", BODY_FONT)
     apply_styles(root)
 
+    version_var = tk.StringVar(value=VERSION)
+
     main = ttk.Frame(root, style="Main.TFrame", padding=20)
     main.grid(row=0, column=0, sticky="nsew")
 
     header = ttk.Frame(main, style="Main.TFrame")
     header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
-    title = ttk.Label(header, text="AFCS 1.25.3", style="Title.TLabel")
+    title = ttk.Label(header, text=f"AFCS {version_var.get()}", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
     subtitle = ttk.Label(
         header,
@@ -742,19 +571,29 @@ def build_gui():
     )
     subtitle.grid(row=1, column=0, sticky="w")
 
-    system_var = tk.StringVar(value="M109A6")
+    equipment_names = registry.names
+    default_system = equipment_names[0] if equipment_names else ""
+    system_var = tk.StringVar(value=default_system)
     system_picker = ttk.Frame(header, style="Main.TFrame")
     system_picker.grid(row=0, column=1, rowspan=2, sticky="e", padx=(12, 0))
     ttk.Label(system_picker, text="장비", style="Body.TLabel").grid(row=0, column=0, sticky="e")
     system_select = ttk.Combobox(
         system_picker,
         textvariable=system_var,
-        values=["M109A6", "M1129", "M119", "RM-70", "siala"],
+        values=equipment_names,
         state="readonly",
         width=8,
         font=BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
+
+    update_version_button = ttk.Button(
+        header,
+        text="버전 업데이트",
+        style="Secondary.TButton",
+        command=lambda: prompt_version_update(root, version_var, title),
+    )
+    update_version_button.grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")
@@ -849,7 +688,7 @@ def build_gui():
     equipment_select = ttk.Combobox(
         equipment_wrap,
         textvariable=log_equipment_filter,
-        values=["전체", "M109A6", "M1129", "M119", "RM-70", "siala"],
+        values=["전체", *equipment_names],
         state="readonly",
         width=8,
         font=BODY_FONT,
@@ -1015,6 +854,8 @@ def build_gui():
             _sync_layout,
         )
     )
+
+    root.after(500, lambda: check_latest_release(root, version_var, title))
 
     return root
 
