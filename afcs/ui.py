@@ -189,7 +189,8 @@ def build_gui() -> tk.Tk:
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
     root.configure(bg=APP_BG)
-    root.option_add("*Font", " ".join(str(part) for part in BODY_FONT))
+    # Protect font family names that include spaces so Tk parses the size correctly
+    root.option_add("*Font", f"{{{BODY_FONT[0]}}} {BODY_FONT[1]}")
     apply_styles(root)
 
     main = ttk.Frame(root, style="Main.TFrame", padding=20)
