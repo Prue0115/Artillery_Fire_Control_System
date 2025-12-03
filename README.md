@@ -17,3 +17,6 @@ AFCS GUI 전체
 계산 GUI
 
 <img width="569" height="624" alt="image" src="https://github.com/user-attachments/assets/55be4d84-3715-431c-8c77-323bc4bff0cc" />
+
+## 클래스 안내 (한국어)
+프로젝트의 주요 클래스 설명은 `docs/classes_ko.md`에서 확인할 수 있습니다.
