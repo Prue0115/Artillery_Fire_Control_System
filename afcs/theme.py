@@ -64,18 +64,18 @@ def set_theme(theme_name: str) -> None:
     theme = THEMES[theme_name]
     global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
     global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
-    APP_BG = theme["APP_BG"]  # pyright: ignore[reportConstantRedefinition]
-    CARD_BG = theme["CARD_BG"]  # pyright: ignore[reportConstantRedefinition]
-    TEXT_COLOR = theme["TEXT_COLOR"]  # pyright: ignore[reportConstantRedefinition]
-    MUTED_COLOR = theme["MUTED_COLOR"]  # pyright: ignore[reportConstantRedefinition]
-    ACCENT_COLOR = theme["ACCENT_COLOR"]  # pyright: ignore[reportConstantRedefinition]
-    BORDER_COLOR = theme["BORDER_COLOR"]  # pyright: ignore[reportConstantRedefinition]
-    INPUT_BG = theme["INPUT_BG"]  # pyright: ignore[reportConstantRedefinition]
-    INPUT_BORDER = theme["INPUT_BORDER"]  # pyright: ignore[reportConstantRedefinition]
-    HOVER_BG = theme["HOVER_BG"]  # pyright: ignore[reportConstantRedefinition]
-    PRESSED_BG = theme["PRESSED_BG"]  # pyright: ignore[reportConstantRedefinition]
-    SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]  # pyright: ignore[reportConstantRedefinition]
-    PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]  # pyright: ignore[reportConstantRedefinition]
+    APP_BG = theme["APP_BG"]  # type: ignore[reportConstantRedefinition]
+    CARD_BG = theme["CARD_BG"]  # type: ignore[reportConstantRedefinition]
+    TEXT_COLOR = theme["TEXT_COLOR"]  # type: ignore[reportConstantRedefinition]
+    MUTED_COLOR = theme["MUTED_COLOR"]  # type: ignore[reportConstantRedefinition]
+    ACCENT_COLOR = theme["ACCENT_COLOR"]  # type: ignore[reportConstantRedefinition]
+    BORDER_COLOR = theme["BORDER_COLOR"]  # type: ignore[reportConstantRedefinition]
+    INPUT_BG = theme["INPUT_BG"]  # type: ignore[reportConstantRedefinition]
+    INPUT_BORDER = theme["INPUT_BORDER"]  # type: ignore[reportConstantRedefinition]
+    HOVER_BG = theme["HOVER_BG"]  # type: ignore[reportConstantRedefinition]
+    PRESSED_BG = theme["PRESSED_BG"]  # type: ignore[reportConstantRedefinition]
+    SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]  # type: ignore[reportConstantRedefinition]
+    PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]  # type: ignore[reportConstantRedefinition]
 
 
 def ensure_dpi_awareness() -> None:

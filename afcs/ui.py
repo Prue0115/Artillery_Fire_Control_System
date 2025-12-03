@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Callable, Sequence
+from typing import Callable, Sequence, cast
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -22,7 +22,8 @@ from .theme import (
     refresh_solution_rows,
     set_theme,
 )
-from .version import LATEST_RELEASE_PAGE, __version__
+from .update import prompt_for_updates
+from .version import __version__
 
 
 SolutionRow = dict[str, ttk.Label]
@@ -150,11 +151,11 @@ def apply_theme(
     for rows in solution_tables:
         refresh_solution_rows(rows)
 
-    configure_log_canvas(log_body.master)
+    configure_log_canvas(cast(tk.Canvas, log_body.master))
     render_log(log_body, log_entries, log_equipment_filter.get())
 
 
-def build_solution_table(parent: ttk.Frame) -> tuple[SolutionRows, ttk.Label]:
+def build_solution_table(parent: tk.Misc) -> tuple[SolutionRows, ttk.Label]:
     table = ttk.Frame(parent, style="Card.TFrame")
     table.columnconfigure(0, weight=1)
     table.columnconfigure(1, weight=3)
@@ -164,7 +165,7 @@ def build_solution_table(parent: ttk.Frame) -> tuple[SolutionRows, ttk.Label]:
     for col, text in enumerate(headers):
         ttk.Label(table, text=text, style="TableHeader.TLabel").grid(row=0, column=col, sticky="w", padx=(0, 8))
 
-    rows = []
+    rows: SolutionRows = []
     for i in range(3):
         ch = ttk.Label(table, text="—", style="TableCellMuted.TLabel", anchor="w", width=4)
         mill = ttk.Label(table, text="—", style="TableCellMuted.TLabel", anchor="w", width=12)
@@ -188,7 +189,7 @@ def build_gui() -> tk.Tk:
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
     root.configure(bg=APP_BG)
-    root.option_add("*Font", BODY_FONT)
+    root.option_add("*Font", " ".join(str(part) for part in BODY_FONT))
     apply_styles(root)
 
     main = ttk.Frame(root, style="Main.TFrame", padding=20)
@@ -292,7 +293,7 @@ def build_gui() -> tk.Tk:
         bottom_bar,
         text="" if theme_icons["light"] else "🌞",
         style="ThemeToggle.TButton",
-        image=theme_icons["light"],
+        image=theme_icons["light"] or "",
         cursor="hand2",
     )
     theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
@@ -321,7 +322,7 @@ def build_gui() -> tk.Tk:
         font=BODY_FONT,
     )
     equipment_select.grid(row=0, column=1, sticky="e")
-    log_canvas = tk.Canvas(
+    log_canvas: tk.Canvas = tk.Canvas(
         log_frame,
         height=380,
         highlightthickness=1,
@@ -333,7 +334,9 @@ def build_gui() -> tk.Tk:
     log_body = ttk.Frame(log_canvas, style="Card.TFrame")
     log_window = log_canvas.create_window((0, 0), window=log_body, anchor="nw")
 
-    y_scroll = ttk.Scrollbar(log_frame, orient="vertical", command=log_canvas.yview)
+    y_scroll = ttk.Scrollbar(
+        log_frame, orient="vertical", command=lambda *args: log_canvas.yview(*args)
+    )
     y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
     log_canvas.configure(yscrollcommand=y_scroll.set)
 
@@ -454,10 +457,10 @@ def build_gui() -> tk.Tk:
     def _apply_toggle_icon(mode: str) -> None:
         if mode == "light":
             img = theme_icons["light"]
-            theme_toggle.configure(image=img, text="" if img else "🌞")
+            theme_toggle.configure(image=img or "", text="" if img else "🌞")
         else:
             img = theme_icons["dark"]
-            theme_toggle.configure(image=img, text="" if img else "🌙")
+            theme_toggle.configure(image=img or "", text="" if img else "🌙")
 
     _sync_layout()
     root.rowconfigure(0, weight=1)
@@ -489,10 +492,7 @@ def build_gui() -> tk.Tk:
 
 def resource_path(relative_path: str) -> str:
     """ PyInstaller로 빌드된 경우 올바른 경로 반환 """
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+    base_path: str = cast(str, getattr(sys, "_MEIPASS", os.path.abspath(".")))
     return os.path.join(base_path, relative_path)
 
 
