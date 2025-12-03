@@ -1,4 +1,6 @@
 import sys
+from typing import Mapping, Sequence
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -244,7 +246,7 @@ def apply_styles(root: tk.Tk):
     )
 
 
-def refresh_solution_rows(rows):
+def refresh_solution_rows(rows: Sequence[Mapping[str, ttk.Label]]) -> None:
     for row in rows:
         for key in ("ch", "mill", "eta"):
             widget = row[key]

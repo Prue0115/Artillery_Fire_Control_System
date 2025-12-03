@@ -1,27 +1,21 @@
 import os
 import sys
+from typing import Callable, Sequence
+
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from .calculations import available_charges, find_solutions, SYSTEM_TRAJECTORY_CHARGES
+from .calculations import (
+    SYSTEM_TRAJECTORY_CHARGES,
+    Solution,
+    available_charges,
+    find_solutions,
+)
 from .config import ICONS_DIR
-from .logs import log_calculation, render_log
-from .update import prompt_for_updates
+from .logs import LogEntry, log_calculation, render_log
 from .theme import (
-    ACCENT_COLOR,
     APP_BG,
     BODY_FONT,
-    CARD_BG,
-    CH_WIDTH,
-    ETA_WIDTH,
-    HOVER_BG,
-    MILL_WIDTH,
-    MONO_FONT,
-    MUTED_COLOR,
-    PRIMARY_PRESSED,
-    SECONDARY_ACTIVE,
-    TEXT_COLOR,
-    TITLE_FONT,
     apply_styles,
     configure_log_canvas,
     ensure_dpi_awareness,
@@ -31,10 +25,19 @@ from .theme import (
 from .version import LATEST_RELEASE_PAGE, __version__
 
 
+SolutionRow = dict[str, ttk.Label]
+SolutionRows = list[SolutionRow]
+
+
 set_theme("light")
 
 
-def update_solution_table(rows, status_label, solutions, message: str | None = None):
+def update_solution_table(
+    rows: Sequence[SolutionRow],
+    status_label: ttk.Label,
+    solutions: Sequence[Solution],
+    message: str | None = None,
+) -> None:
     if message:
         status_label.config(text=message)
     elif not solutions:
@@ -55,20 +58,20 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
 
 
 def calculate_and_display(
-    system_var,
-    low_rows,
-    high_rows,
-    low_status,
-    high_status,
-    delta_label,
-    my_altitude_entry,
-    target_altitude_entry,
-    distance_entry,
-    log_entries,
-    log_equipment_filter,
-    log_body,
-    sync_layout=None,
-):
+    system_var: tk.StringVar,
+    low_rows: Sequence[SolutionRow],
+    high_rows: Sequence[SolutionRow],
+    low_status: ttk.Label,
+    high_status: ttk.Label,
+    delta_label: ttk.Label,
+    my_altitude_entry: ttk.Entry,
+    target_altitude_entry: ttk.Entry,
+    distance_entry: ttk.Entry,
+    log_entries: list[LogEntry],
+    log_equipment_filter: tk.StringVar,
+    log_body: ttk.Frame,
+    sync_layout: Callable[[], None] | None = None,
+) -> None:
     try:
         my_alt = float(my_altitude_entry.get())
         target_alt = float(target_altitude_entry.get())
@@ -135,11 +138,11 @@ def apply_theme(
     root: tk.Tk,
     theme_name: str,
     *,
-    solution_tables,
+    solution_tables: Sequence[Sequence[SolutionRow]],
     log_body: ttk.Frame,
-    log_entries,
-    log_equipment_filter,
-):
+    log_entries: list[LogEntry],
+    log_equipment_filter: tk.StringVar,
+) -> None:
     set_theme(theme_name)
     root.configure(bg=APP_BG)
     apply_styles(root)
@@ -151,7 +154,7 @@ def apply_theme(
     render_log(log_body, log_entries, log_equipment_filter.get())
 
 
-def build_solution_table(parent):
+def build_solution_table(parent: ttk.Frame) -> tuple[SolutionRows, ttk.Label]:
     table = ttk.Frame(parent, style="Card.TFrame")
     table.columnconfigure(0, weight=1)
     table.columnconfigure(1, weight=3)
@@ -181,7 +184,7 @@ def build_solution_table(parent):
     return rows, status
 
 
-def build_gui():
+def build_gui() -> tk.Tk:
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
     root.configure(bg=APP_BG)
@@ -277,18 +280,19 @@ def build_gui():
     bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
 
+    theme_icons: dict[str, tk.PhotoImage | None] = {"light": None, "dark": None}
+
     try:
-        root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
-        root.dark_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
+        theme_icons["light"] = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
+        theme_icons["dark"] = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
     except Exception as e:
         messagebox.showerror("아이콘 로드 오류", f"테마 아이콘을 불러오지 못했습니다.\n{e}")
-        root.light_icon_base = root.dark_icon_base = None
 
     theme_toggle = ttk.Button(
         bottom_bar,
-        text="" if root.light_icon_base else "🌞",
+        text="" if theme_icons["light"] else "🌞",
         style="ThemeToggle.TButton",
-        image=root.light_icon_base if root.light_icon_base else None,
+        image=theme_icons["light"],
         cursor="hand2",
     )
     theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
@@ -333,49 +337,49 @@ def build_gui():
     y_scroll.grid(row=1, column=1, sticky="nsw", padx=(8, 0))
     log_canvas.configure(yscrollcommand=y_scroll.set)
 
-    def _on_frame_configure(event):
+    def _on_frame_configure(event: tk.Event) -> None:
         log_canvas.configure(scrollregion=log_canvas.bbox("all"))
 
-    def _on_canvas_configure(event):
+    def _on_canvas_configure(event: tk.Event) -> None:
         log_canvas.itemconfigure(log_window, width=event.width)
 
     log_body.bind("<Configure>", _on_frame_configure)
     log_canvas.bind("<Configure>", _on_canvas_configure)
 
-    def _can_scroll():
+    def _can_scroll() -> bool:
         region = log_canvas.bbox("all")
         if not region:
             return False
         content_height = region[3] - region[1]
         return content_height > log_canvas.winfo_height()
 
-    def _on_mousewheel(event):
+    def _on_mousewheel(event: tk.Event) -> str:
         if not _can_scroll():
             return "break"
         log_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         return "break"
 
-    def _on_linux_scroll(event):
+    def _on_linux_scroll(event: tk.Event) -> str:
         if not _can_scroll():
             return "break"
         direction = -1 if event.num == 4 else 1
         log_canvas.yview_scroll(direction, "units")
         return "break"
 
-    def _bind_scrollwheel(widget):
+    def _bind_scrollwheel(widget: tk.Misc) -> None:
         widget.bind_all("<MouseWheel>", _on_mousewheel)
         widget.bind_all("<Button-4>", _on_linux_scroll)
         widget.bind_all("<Button-5>", _on_linux_scroll)
 
-    def _unbind_scrollwheel(widget):
+    def _unbind_scrollwheel(widget: tk.Misc) -> None:
         widget.unbind_all("<MouseWheel>")
         widget.unbind_all("<Button-4>")
         widget.unbind_all("<Button-5>")
 
-    def _on_scroll_area_enter(event):
+    def _on_scroll_area_enter(event: tk.Event) -> None:
         _bind_scrollwheel(event.widget)
 
-    def _on_scroll_area_leave(event):
+    def _on_scroll_area_leave(event: tk.Event) -> None:
         _unbind_scrollwheel(event.widget)
 
     for scroll_area in (log_canvas, log_body, log_frame):
@@ -385,12 +389,12 @@ def build_gui():
     log_frame.columnconfigure(1, weight=0)
     log_frame.rowconfigure(1, weight=1)
 
-    log_entries = []
+    log_entries: list[LogEntry] = []
     log_visible = {"value": False}
 
     log_column_width = {"value": 0}
 
-    def _sync_layout():
+    def _sync_layout() -> None:
         if log_visible["value"]:
             log_frame.update_idletasks()
             root_width = max(root.winfo_width(), root.winfo_reqwidth())
@@ -411,7 +415,7 @@ def build_gui():
             root.columnconfigure(0, weight=1)
             root.columnconfigure(1, weight=0, minsize=0)
 
-    def _refresh_log(event=None):
+    def _refresh_log(event: tk.Event | None = None) -> None:
         render_log(log_body, log_entries, log_equipment_filter.get())
         _sync_layout()
 
@@ -419,7 +423,7 @@ def build_gui():
 
     equipment_select.bind("<<ComboboxSelected>>", _refresh_log)
 
-    def toggle_log():
+    def toggle_log() -> None:
         log_visible["value"] = not log_visible["value"]
         if log_visible["value"]:
             log_frame.grid()
@@ -431,7 +435,7 @@ def build_gui():
 
     log_toggle_button.configure(command=toggle_log)
 
-    def toggle_theme():
+    def toggle_theme() -> None:
         new_theme = "dark" if theme_var.get() == "light" else "light"
         theme_var.set(new_theme)
         apply_theme(
@@ -447,12 +451,12 @@ def build_gui():
 
     theme_toggle.configure(command=toggle_theme)
 
-    def _apply_toggle_icon(mode: str):
+    def _apply_toggle_icon(mode: str) -> None:
         if mode == "light":
-            img = root.light_icon_base if root.light_icon_base else None
+            img = theme_icons["light"]
             theme_toggle.configure(image=img, text="" if img else "🌞")
         else:
-            img = root.dark_icon_base if root.dark_icon_base else None
+            img = theme_icons["dark"]
             theme_toggle.configure(image=img, text="" if img else "🌙")
 
     _sync_layout()
@@ -483,7 +487,7 @@ def build_gui():
     return root
 
 
-def resource_path(relative_path):
+def resource_path(relative_path: str) -> str:
     """ PyInstaller로 빌드된 경우 올바른 경로 반환 """
     try:
         base_path = sys._MEIPASS
