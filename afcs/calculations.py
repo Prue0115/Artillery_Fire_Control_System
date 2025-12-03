@@ -1,5 +1,6 @@
 import csv
 from bisect import bisect_left
+from typing import TypedDict
 
 from .config import RANGE_TABLE_DIR
 
@@ -11,7 +12,24 @@ SYSTEM_FILE_PREFIX = {
     "siala": "siala",
 }
 
-SYSTEM_TRAJECTORY_CHARGES = {"M1129": {"low": [], "high": [0, 1, 2]}}
+SYSTEM_TRAJECTORY_CHARGES: dict[str, dict[str, list[int]]] = {
+    "M1129": {"low": [], "high": [0, 1, 2]}
+}
+
+
+class RangeRow(TypedDict):
+    range: float
+    mill: float
+    diff100m: float
+    eta: float
+
+
+class Solution(TypedDict):
+    mill: float
+    eta: float
+    charge: int
+    base_mill: float
+    diff100m: float
 
 
 class RangeTable:
@@ -21,12 +39,12 @@ class RangeTable:
         self.charge = charge
         prefix = SYSTEM_FILE_PREFIX.get(system, system)
         self.path = RANGE_TABLE_DIR / f"{prefix}_rangeTable_{trajectory}_{charge}.csv"
-        self.rows = self._load_rows()
+        self.rows: list[RangeRow] = self._load_rows()
 
-    def _load_rows(self):
+    def _load_rows(self) -> list[RangeRow]:
         with self.path.open("r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
-            rows = []
+            rows: list[RangeRow] = []
             for _, row in enumerate(reader, start=1):
                 cleaned = {
                     (key.strip() if key else ""): (value.strip() if value is not None else "")
@@ -45,10 +63,10 @@ class RangeTable:
     def supports_range(self, distance: float) -> bool:
         if not self.rows:
             return False
-        distances = [row["range"] for row in self.rows]
+        distances: list[float] = [row["range"] for row in self.rows]
         return min(distances) <= distance <= max(distances)
 
-    def calculate(self, distance: float, altitude_delta: float):
+    def calculate(self, distance: float, altitude_delta: float) -> Solution:
         if not self.supports_range(distance):
             raise ValueError("거리 밖입니다")
 
@@ -67,17 +85,17 @@ class RangeTable:
             "diff100m": diff100m,
         }
 
-    def _neighbor_rows(self, distance: float):
+    def _neighbor_rows(self, distance: float) -> list[RangeRow]:
         ranges = [row["range"] for row in self.rows]
         idx = bisect_left(ranges, distance)
 
-        neighbors = []
+        neighbors: list[RangeRow] = []
         if idx > 0:
             neighbors.append(self.rows[idx - 1])
         if idx < len(self.rows):
             neighbors.append(self.rows[idx])
 
-        remaining = []
+        remaining: list[RangeRow] = []
         if idx - 2 >= 0:
             remaining.append(self.rows[idx - 2])
         if idx + 1 < len(self.rows):
@@ -110,7 +128,7 @@ class RangeTable:
         x0, x1, x2 = (row["range"] for row in neighbors[:3])
         y0, y1, y2 = (row[key] for row in neighbors[:3])
 
-        def basis(x, a, b):
+        def basis(x: float, a: float, b: float) -> float:
             return (x - a) / (b - a) if b != a else 0.0
 
         t0 = basis(distance, x1, x0) * basis(distance, x2, x0)
@@ -119,10 +137,10 @@ class RangeTable:
         return y0 * t0 + y1 * t1 + y2 * t2
 
 
-def available_charges(system: str, trajectory: str):
+def available_charges(system: str, trajectory: str) -> list[int]:
     prefix = SYSTEM_FILE_PREFIX.get(system, system)
     pattern = f"{prefix}_rangeTable_{trajectory}_"
-    charges = []
+    charges: list[int] = []
     for csv_path in RANGE_TABLE_DIR.glob(f"{pattern}*.csv"):
         name = csv_path.stem
         if not name.startswith(pattern):
@@ -140,8 +158,8 @@ def find_solutions(
     system: str = "M109A6",
     limit: int = 3,
     charges: list[int] | None = None,
-):
-    solutions = []
+) -> list[Solution]:
+    solutions: list[Solution] = []
     if charges is None:
         charges = available_charges(system, trajectory)
     if not charges:
@@ -163,12 +181,14 @@ def find_solutions(
     return solutions
 
 
-def find_solution(distance: float, altitude_delta: float, trajectory: str, system: str = "M109A6"):
+def find_solution(
+    distance: float, altitude_delta: float, trajectory: str, system: str = "M109A6"
+) -> Solution | None:
     solutions = find_solutions(distance, altitude_delta, trajectory, system=system, limit=1)
     return solutions[0] if solutions else None
 
 
-def format_solution_list(title: str, solutions):
+def format_solution_list(title: str, solutions: list[Solution]) -> str:
     if not solutions:
         return f"{title}: 지원 범위 밖입니다"
 
