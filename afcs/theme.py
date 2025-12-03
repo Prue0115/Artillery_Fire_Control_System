@@ -102,6 +102,35 @@ def apply_styles(root: tk.Tk):
     style.configure("CardBody.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=BODY_FONT, anchor="w")
     style.configure("TableHeader.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=(BODY_FONT[0], 11, "bold"))
     style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
+    style.configure("TableCell.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=MONO_FONT, anchor="w")
+    style.configure(
+        "TableCellMuted.TLabel",
+        background=CARD_BG,
+        foreground=MUTED_COLOR,
+        font=MONO_FONT,
+        anchor="w",
+    )
+    style.configure(
+        "LogAccent.TLabel",
+        background=CARD_BG,
+        foreground=ACCENT_COLOR,
+        font=(MONO_FONT[0], 12, "bold"),
+        anchor="w",
+    )
+    style.configure(
+        "LogMuted.TLabel",
+        background=CARD_BG,
+        foreground=MUTED_COLOR,
+        font=MONO_FONT,
+        anchor="w",
+    )
+    style.configure(
+        "LogHeader.TLabel",
+        background=CARD_BG,
+        foreground=TEXT_COLOR,
+        font=(MONO_FONT[0], 12, "bold"),
+        anchor="w",
+    )
 
     style.configure(
         "TEntry",
@@ -204,8 +233,8 @@ def refresh_solution_rows(rows):
     for row in rows:
         for key in ("ch", "mill", "eta"):
             widget = row[key]
-            widget.configure(bg=CARD_BG)
-            widget.configure(fg=MUTED_COLOR if widget.cget("text") == "—" else TEXT_COLOR)
+            text = widget.cget("text")
+            widget.configure(style="TableCellMuted.TLabel" if text == "—" else "TableCell.TLabel")
 
 
 def configure_log_canvas(canvas: tk.Canvas):

@@ -46,13 +46,13 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
     for idx, row in enumerate(rows):
         if idx < len(solutions):
             solution = solutions[idx]
-            row["ch"].config(text=f"{solution['charge']}", fg=TEXT_COLOR)
-            row["mill"].config(text=f"{solution['mill']:.2f}", fg=TEXT_COLOR)
-            row["eta"].config(text=f"{solution['eta']:.1f}", fg=TEXT_COLOR)
+            row["ch"].config(text=f"{solution['charge']}", style="TableCell.TLabel")
+            row["mill"].config(text=f"{solution['mill']:.2f}", style="TableCell.TLabel")
+            row["eta"].config(text=f"{solution['eta']:.1f}", style="TableCell.TLabel")
         else:
-            row["ch"].config(text="—", fg=MUTED_COLOR)
-            row["mill"].config(text="—", fg=MUTED_COLOR)
-            row["eta"].config(text="—", fg=MUTED_COLOR)
+            row["ch"].config(text="—", style="TableCellMuted.TLabel")
+            row["mill"].config(text="—", style="TableCellMuted.TLabel")
+            row["eta"].config(text="—", style="TableCellMuted.TLabel")
 
 
 def calculate_and_display(
@@ -164,9 +164,9 @@ def build_solution_table(parent):
 
     rows = []
     for i in range(3):
-        ch = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=4)
-        mill = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=12)
-        eta = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=6)
+        ch = ttk.Label(table, text="—", style="TableCellMuted.TLabel", anchor="w", width=4)
+        mill = ttk.Label(table, text="—", style="TableCellMuted.TLabel", anchor="w", width=12)
+        eta = ttk.Label(table, text="—", style="TableCellMuted.TLabel", anchor="w", width=6)
 
         ch.grid(row=i + 1, column=0, sticky="w", pady=3)
         mill.grid(row=i + 1, column=1, sticky="w", pady=3)

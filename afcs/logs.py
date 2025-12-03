@@ -5,16 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .calculations import Solution
-from .theme import (
-    ACCENT_COLOR,
-    CARD_BG,
-    CH_WIDTH,
-    ETA_WIDTH,
-    MILL_WIDTH,
-    MONO_FONT,
-    MUTED_COLOR,
-    TEXT_COLOR,
-)
+from .theme import CH_WIDTH, ETA_WIDTH, MILL_WIDTH
 
 
 class LogEntry(TypedDict):
@@ -37,12 +28,10 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
         filtered_entries = [e for e in filtered_entries if e["system"] == equipment_filter]
 
     if not filtered_entries:
-        tk.Label(
+        ttk.Label(
             log_body,
             text="선택한 조건에 맞는 기록이 없습니다.",
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
+            style="TableStatus.TLabel",
             anchor="w",
         ).grid(row=0, column=0, sticky="w", padx=12, pady=8)
         return
@@ -52,25 +41,21 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
         card.grid(row=idx * 2, column=0, sticky="ew", padx=0, pady=(0, 6))
         card.columnconfigure(0, weight=1)
 
-        tk.Label(
+        ttk.Label(
             card,
             text=f"시간 {entry['timestamp'].strftime('%H:%M')} · 장비 {entry['system']}",
-            bg=CARD_BG,
-            fg=ACCENT_COLOR,
-            font=(MONO_FONT[0], 12, "bold"),
+            style="LogAccent.TLabel",
             anchor="w",
         ).grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
 
-        tk.Label(
+        ttk.Label(
             card,
             text=(
                 f"My ALT {entry['my_alt']:>5g}m  |  "
                 f"Target ALT {entry['target_alt']:>5g}m  |  "
                 f"Distance {entry['distance']:>6g}m"
             ),
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
+            style="LogMuted.TLabel",
             anchor="w",
         ).grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
 
@@ -82,12 +67,10 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
         table.grid_columnconfigure(3, minsize=16)
 
         def _header(text: str, column: int, columnspan: int = 1) -> None:
-            tk.Label(
+            ttk.Label(
                 table,
                 text=text,
-                bg=CARD_BG,
-                fg=TEXT_COLOR,
-                font=(MONO_FONT[0], 12, "bold"),
+                style="LogHeader.TLabel",
                 anchor="w",
             ).grid(row=0, column=column, columnspan=columnspan, sticky="w")
 
@@ -95,13 +78,11 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
         _header("HIGH", 4, 3)
 
         def _column_header(label_text: str, column: int, width: int) -> None:
-            tk.Label(
+            ttk.Label(
                 table,
                 text=label_text,
                 width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR,
-                font=(MONO_FONT[0], 10, "bold"),
+                style="TableHeader.TLabel",
                 anchor="w",
             ).grid(row=1, column=column, sticky="w")
 
@@ -120,13 +101,12 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
         )
 
         def _row(value: str, width: int, row_idx: int, column: int) -> None:
-            tk.Label(
+            style = "TableCellMuted.TLabel" if value == "—" else "TableCell.TLabel"
+            ttk.Label(
                 table,
                 text=value,
                 width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR if value == "—" else TEXT_COLOR,
-                font=MONO_FONT,
+                style=style,
                 anchor="w",
             ).grid(row=row_idx, column=column, sticky="w", pady=(2, 0))
 
