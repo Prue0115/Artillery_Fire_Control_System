@@ -105,11 +105,15 @@ SYSTEM_FILE_PREFIX = {
     "M109A6": "M109A6",
     "M1129": "M1129",
     "M119": "M119",
+    "FV432": "FV432",
     "RM-70": "RM70",
     "siala": "siala",
 }
 
-SYSTEM_TRAJECTORY_CHARGES = {"M1129": {"low": [], "high": [0, 1, 2]}}
+SYSTEM_TRAJECTORY_CHARGES = {
+    "M1129": {"low": [], "high": [0, 1, 2]},
+    "FV432": {"low": [], "high": [0, 1, 2]},
+}
 
 
 class RangeTable:
@@ -749,7 +753,7 @@ def build_gui():
     system_select = ttk.Combobox(
         system_picker,
         textvariable=system_var,
-        values=["M109A6", "M1129", "M119", "RM-70", "siala"],
+        values=["M109A6", "M1129", "FV432", "M119", "RM-70", "siala"],
         state="readonly",
         width=8,
         font=BODY_FONT,
@@ -849,7 +853,7 @@ def build_gui():
     equipment_select = ttk.Combobox(
         equipment_wrap,
         textvariable=log_equipment_filter,
-        values=["전체", "M109A6", "M1129", "M119", "RM-70", "siala"],
+        values=["전체", "M109A6", "M1129", "FV432", "M119", "RM-70", "siala"],
         state="readonly",
         width=8,
         font=BODY_FONT,
