@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Callable, TypedDict
+from typing import Callable, TypedDict, cast
 
 import tkinter as tk
 from tkinter import ttk
@@ -28,7 +28,7 @@ class LogEntry(TypedDict):
 
 
 def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: str) -> None:
-    log_body.configure(bg=CARD_BG)
+    log_body.configure(style="Card.TFrame")
     for child in log_body.winfo_children():
         child.destroy()
 
@@ -114,7 +114,10 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
 
         low_map: dict[int, Solution] = {solution["charge"]: solution for solution in low_sorted}
         high_map: dict[int, Solution] = {solution["charge"]: solution for solution in high_sorted}
-        charges: list[int | None] = sorted(set(low_map.keys()) | set(high_map.keys())) or [None]
+        charge_keys: list[int] = sorted(set(low_map.keys()) | set(high_map.keys()))
+        charges: list[int | None] = (
+            [cast(int | None, ch) for ch in charge_keys] if charge_keys else [None]
+        )
 
         def _row(value: str, width: int, row_idx: int, column: int) -> None:
             tk.Label(
@@ -128,8 +131,12 @@ def render_log(log_body: ttk.Frame, entries: list[LogEntry], equipment_filter: s
             ).grid(row=row_idx, column=column, sticky="w", pady=(2, 0))
 
         for row_idx, charge in enumerate(charges, start=2):
-            low = low_map.get(charge)
-            high = high_map.get(charge)
+            if charge is None:
+                low: Solution | None = None
+                high: Solution | None = None
+            else:
+                low = low_map.get(charge)
+                high = high_map.get(charge)
 
             def fmt(solution: Solution | None, key: str, width: int) -> str:
                 if not solution:
