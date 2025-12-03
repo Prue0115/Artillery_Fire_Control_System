@@ -118,6 +118,13 @@ def apply_styles(root: tk.Tk):
         anchor="w",
     )
     style.configure(
+        "LogTitle.TLabel",
+        background=CARD_BG,
+        foreground=ACCENT_COLOR,
+        font=(MONO_FONT[0], 12, "bold"),
+        anchor="w",
+    )
+    style.configure(
         "LogMuted.TLabel",
         background=CARD_BG,
         foreground=MUTED_COLOR,
