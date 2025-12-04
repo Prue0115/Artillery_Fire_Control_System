@@ -12,6 +12,7 @@ from afcs.ui_theme import (
     APP_BG,
     BODY_FONT,
     CARD_BG,
+    BORDER_COLOR,
     CH_WIDTH,
     ETA_WIDTH,
     HOVER_BG,
