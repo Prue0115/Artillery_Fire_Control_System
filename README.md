@@ -1,29 +1,55 @@
-# AFCS – Artillery Fire Control System
-AFCS GUI 화면
+# 📝소개
+--
+AFCS는 복잡한 탄도 계산을 누구나 쉽게 다룰 수 있도록 설계된 사격 제원 계산 프로그램입니다.
+직관적인 인터페이스에서 장비를 선택하고 값을 입력하면, 필요한 각종 제원이 자동 계산되어 바로 확인할 수 있습니다.
+<img width="567" height="608" alt="image" src="https://github.com/user-attachments/assets/c3a35b88-c849-433c-a538-495d129dd512" />
 
-<img width="588" height="615" alt="image" src="https://github.com/user-attachments/assets/47126343-9d69-4648-a524-c5edc146eaf2" />
+# 🎯 주요 애플리케이션 시나리오
+--
+1) 사격 제원 산출을 위한 탄도 계산
+사용자는 목표 지점까지의 거리·고도·풍향 등 필요한 데이터를 입력하면,
+AFCS는 rangeTables 기반의 탄도 데이터를 참조해 최적의 포각·장약·예상 등을 즉시 계산합니다.
 
-장비 목록
+2) 장비(포) 목록을 기반으로 한 즉각적 설정 전환
+장비를 선택하기만 하면 해당 장비에 맞는 파라미터로 자동 전환됩니다.
 
-<img width="135" height="142" alt="image" src="https://github.com/user-attachments/assets/4f04aeea-7500-4cae-b725-156ab37d273c" />
+3) 작업 기록(Log) 관리 및 반복 계산 지원
+AFCS는 입력값·계산 결과·사용자 지정 메모 등을 자동으로 기록 UI에 저장합니다.
+이를 통해 사용자는 다음과 같은 작업을 수행할 수 있습니다:
+- 이전 계산 결과 재확인
+- 동일 조건 반복 작업 시 빠른 재사용
+- 임무 별 기록 관리
+기록은 UI 테마와 통일된 형태로 보여져 가독성이 좋고, 빠르게 스크롤·검색할 수 있습니다.
 
-AFCS GUI 전체
-<img width="1139" height="612" alt="image" src="https://github.com/user-attachments/assets/ebf58f19-56c1-467b-8ddf-92297cf7a9bc" />
+4) 사거리표(rangeTables) 기반의 데이터 연동 계산
+AFCS는 정적 파일로 제공되는 rangeTables 디렉토리 내 데이터를 자동 불러와 사용합니다.
+이를 통해 다음을 수행할 수 있습니다
+- 탄종 및 장약별 사거리 데이터 자동 매칭
 
-기록 GUI
+5) 테마(라이트/다크) 변경을 통한 가시성 향상
+작업 환경이 실내·야간 등 시시각각 변화할 수 있는 점을 고려해
+AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
+- 밝은 환경 → 라이트 테마로 시인성 확보
+- 야간 또는 어두운 환경 → 다크 테마로 눈부심 최소화
 
-<img width="609" height="636" alt="image" src="https://github.com/user-attachments/assets/aae2e894-3169-4d89-8bca-58d9340d0c0d" />
+6) GitHub Releases 기반 업데이트 확인
+프로그램 실행 시 자동으로 GitHub API를 조회하여 최신 버전이 있는지 확인합니다.
+사용자는 다음을 즉시 알 수 있습니다
+- 최신 릴리스 버전
+- 다운로드 링크
+- 업데이트 필요 여부
 
-계산 GUI
+# 🔧 설치 및 사용
+--
+## 다운로드 및 설치
+1. [릴리스 페이지](https://github.com/Prue0115/Artillery_Fire_Control_System/releases)
+2. AFCS.exe 실행하세요
 
-<img width="569" height="624" alt="image" src="https://github.com/user-attachments/assets/55be4d84-3715-431c-8c77-323bc4bff0cc" />
+## 사용 방법
+1. 프로그램을 실행하면 메인 화면이 표시됩니다.
+2. 장비 목록에서 사용할 장비를 선택합니다.
+3. My ALT(m) 사수고도, Target ALT(m) 목표의 고도, Distance (m) 사수-목표물 거리 입력을 합니다.
+4. 계산 버튼을 누르면 사격 제원이 즉시 출력됩니다.
+5. 계산 결과는 장비 기준으로 자동 분류되어 기록(Log) 탭에 저장됩니다.
+<img width="1092" height="612" alt="image" src="https://github.com/user-attachments/assets/36aab6f0-13b2-4e2e-899d-03277b0189f8" />
 
-## 클래스 안내 (한국어)
-프로젝트의 주요 클래스 설명은 `docs/classes_ko.md`에서 확인할 수 있습니다.
-
-## 버전 관리
-애플리케이션 버전 문자열은 `afcs/versioning.py`에 선언된 기본값(`INITIAL_VERSION`)에서 시작해 메모리에 저장됩니다.
-* `get_version()`은 현재 메모리에 기록된 버전(초기값은 `1.25.4`)을 반환합니다.
-* `update_version()`은 전달받은 문자열을 정규화한 뒤 런타임 버전을 갱신합니다. 별도의 파일을 생성하지 않으므로 배포 아티팩트가 단순합니다.
-* `fetch_latest_release()`는 GitHub 릴리스 API를 조회해 최신 태그 이름과 릴리스 URL을 반환하므로, 외부 업데이트 확인 기능을 구현할 때 활용할 수 있습니다.
-  * 릴리스 제목이 `AFCS 1.25.3`, 태그가 `v1.25.3`처럼 접두 텍스트를 포함해도 버전 숫자(`1.25.3`)만 추출해 비교합니다.
