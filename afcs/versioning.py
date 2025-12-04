@@ -1,15 +1,8 @@
 """버전 문자열을 파일과 동기화하며 업데이트 확인을 지원하는 헬퍼.
 
-이 모듈은 두 가지 경로로 버전을 결정합니다.
-
-1. 배포물과 함께 제공되는 `afcs/VERSION` 파일
-2. 코드 안에 정의된 기본 상수 `DEFAULT_VERSION`
-
-`DEFAULT_VERSION`만 있으면 코드 차원에서는 동작할 수 있지만, 실행 환경
-에서 버전을 갱신하거나 배포 아티팩트가 버전 문자열을 유지하려면 파일이
-필수입니다. `afcs/VERSION`은 GUI 타이틀, 빌드 산출물, 타입 검증 과정에서
-일관된 버전을 노출하기 위한 단일 진실 공급원(single source of truth)으로
-동작합니다.
+`afcs/VERSION` 파일을 단일 진실 공급원(single source of truth)으로 사용해
+버전을 관리한다. 코드 내부의 기본값은 파일이 존재하지 않을 때 초기값을
+기록하는 부트스트랩 용도로만 사용한다.
 """
 
 import json
@@ -20,7 +13,7 @@ from urllib.request import Request, urlopen
 
 BASE_DIR = Path(__file__).resolve().parent
 VERSION_FILE = BASE_DIR / "VERSION"
-DEFAULT_VERSION = "1.25.4"
+INITIAL_VERSION = "1.25.4"
 DEFAULT_GITHUB_REPO = "prue0115/Artillery_Fire_Control_System"
 
 
@@ -29,8 +22,8 @@ def get_version() -> str:
         content = VERSION_FILE.read_text(encoding="utf-8").strip()
         if content:
             return content
-    set_version(DEFAULT_VERSION)
-    return DEFAULT_VERSION
+    set_version(INITIAL_VERSION)
+    return INITIAL_VERSION
 
 
 def set_version(version: str):
