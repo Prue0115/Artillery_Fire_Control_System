@@ -38,11 +38,11 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 - 업데이트 필요 여부
 
 # 🔧 설치 및 사용
-다운로드 및 설치
+**다운로드 및 설치**
 1. [릴리스 페이지](https://github.com/Prue0115/Artillery_Fire_Control_System/releases)
 2. AFCS.exe 실행하세요
 
-사용 방법
+**사용 방법**
 1. 프로그램을 실행하면 메인 화면이 표시됩니다.
 2. 장비 목록에서 사용할 장비를 선택합니다.
 3. My ALT(m) 사수고도, Target ALT(m) 목표의 고도, Distance (m) 사수-목표물 거리 입력을 합니다.
