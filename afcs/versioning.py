@@ -6,45 +6,23 @@
 
 import json
 import os
-import re
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-INITIAL_VERSION = "1.25.4"
+INITIAL_VERSION = "1.25.3"
 DEFAULT_GITHUB_REPO = "prue0115/Artillery_Fire_Control_System"
 
 _current_version = INITIAL_VERSION
 
 
-_VERSION_PATTERN = re.compile(r"(\d+(?:\.\d+)+)")
-
-
-def normalize_version_string(version: str) -> str:
-    """릴리스 제목이나 태그에서 버전 숫자만 추출해 비교 가능하게 만든다."""
-
-    if not version:
-        return ""
-
-    cleaned = version.strip()
-    # 릴리스 제목이 "AFCS 1.25.3"처럼 접두 텍스트를 포함해도 숫자 패턴을 우선 추출한다.
-    match = _VERSION_PATTERN.search(cleaned)
-    if match:
-        return match.group(1)
-
-    # 숫자 패턴이 없을 때는 기존 동작을 유지해 v 접두사만 제거한다.
-    return cleaned.lstrip("vV")
-
-
 def get_version() -> str:
-    """현재 메모리에 저장된 버전 문자열을 반환한다."""
 
     return _current_version
 
 
 def set_version(version: str):
-    """버전 문자열을 정규화해 메모리에 기록한다."""
 
-    normalized = normalize_version_string(version)
+    normalized = version.strip()
     if not normalized:
         raise ValueError("Version cannot be empty")
 
