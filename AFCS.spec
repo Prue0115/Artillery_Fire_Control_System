@@ -9,7 +9,8 @@ a = Analysis(
     binaries=[],
     datas=[
         ('rangeTables', 'rangeTables'),
-        ('icons', 'icons')
+        ('icons', 'icons'),
+        ('afcs', 'afcs'), 
     ],
     hiddenimports=[],
     hookspath=[],

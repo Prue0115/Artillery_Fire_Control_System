@@ -4,7 +4,7 @@ import re
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-INITIAL_VERSION = "1.25.3"
+INITIAL_VERSION = "1.25.4"
 DEFAULT_GITHUB_REPO = "prue0115/Artillery_Fire_Control_System"
 
 _current_version = INITIAL_VERSION
@@ -35,13 +35,6 @@ def get_version() -> str:
 
 def set_version(version: str):
     """버전 문자열을 정규화해 메모리에 기록한다."""
-
-    normalized = normalize_version_string(version)
-    if not normalized:
-        raise ValueError("버전을 입력하지 않았습니다.")
-
-    global _current_version
-    _current_version = normalized
 
 
 def update_version(new_version: str) -> str:
