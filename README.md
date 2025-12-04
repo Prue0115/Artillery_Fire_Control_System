@@ -18,5 +18,12 @@ AFCS GUI 전체
 
 <img width="569" height="624" alt="image" src="https://github.com/user-attachments/assets/55be4d84-3715-431c-8c77-323bc4bff0cc" />
 
+## 실행 파일 이름
+프로그램의 진입점은 `main.py`입니다. 일반적인 파이썬 애플리케이션에서 사용하는 관례적인 파일명이라, 실행 의도가 직관적으로 드러나고 배포 스크립트(`AFCS.spec`)에서도 바로 참조할 수 있습니다. 다음과 같이 실행하면 됩니다.
+
+```bash
+python main.py
+```
+
 ## 클래스 안내 (한국어)
 프로젝트의 주요 클래스 설명은 `docs/classes_ko.md`에서 확인할 수 있습니다.
