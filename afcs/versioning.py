@@ -1,42 +1,42 @@
-"""버전 문자열을 파일과 동기화하며 업데이트 확인을 지원하는 헬퍼.
+"""버전 문자열을 관리하고 업데이트 확인을 지원하는 헬퍼.
 
-`afcs/VERSION` 파일을 단일 진실 공급원(single source of truth)으로 사용해
-버전을 관리한다. 코드 내부의 기본값은 파일이 존재하지 않을 때 초기값을
-기록하는 부트스트랩 용도로만 사용한다.
+파일 없이 코드에 선언한 기본값(`INITIAL_VERSION`)을 시작점으로 사용하며,
+실행 중 `update_version()`을 통해 메모리에 유지된 값을 변경할 수 있다.
 """
 
 import json
 import os
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-BASE_DIR = Path(__file__).resolve().parent
-VERSION_FILE = BASE_DIR / "VERSION"
 INITIAL_VERSION = "1.25.4"
 DEFAULT_GITHUB_REPO = "prue0115/Artillery_Fire_Control_System"
 
+_current_version = INITIAL_VERSION
+
 
 def get_version() -> str:
-    if VERSION_FILE.exists():
-        content = VERSION_FILE.read_text(encoding="utf-8").strip()
-        if content:
-            return content
-    set_version(INITIAL_VERSION)
-    return INITIAL_VERSION
+    """현재 메모리에 저장된 버전 문자열을 반환한다."""
+
+    return _current_version
 
 
 def set_version(version: str):
-    VERSION_FILE.write_text(version.strip(), encoding="utf-8")
+    """버전 문자열을 정규화해 메모리에 기록한다."""
 
-
-def update_version(new_version: str) -> str:
-    normalized = new_version.strip()
+    normalized = version.strip()
     if not normalized:
         raise ValueError("Version cannot be empty")
 
-    set_version(normalized)
-    return normalized
+    global _current_version
+    _current_version = normalized
+
+
+def update_version(new_version: str) -> str:
+    """버전을 갱신하고 결과 문자열을 반환한다."""
+
+    set_version(new_version)
+    return _current_version
 
 
 def fetch_latest_release(repo: str | None = None, timeout: float = 5.0):
