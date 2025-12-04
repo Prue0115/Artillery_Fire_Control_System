@@ -3,8 +3,9 @@ import sys
 import threading
 from datetime import datetime
 import tkinter as tk
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import messagebox, ttk
 
+import afcs.ui_theme as ui_theme
 from afcs.equipment import EquipmentRegistry
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui_theme import (
@@ -12,6 +13,7 @@ from afcs.ui_theme import (
     APP_BG,
     BODY_FONT,
     CARD_BG,
+    BORDER_COLOR,
     CH_WIDTH,
     ETA_WIDTH,
     HOVER_BG,
@@ -30,11 +32,33 @@ from afcs.ui_theme import (
     ensure_dpi_awareness,
     set_theme,
 )
-from afcs.versioning import fetch_latest_release, get_version, update_version
+from afcs.versioning import (
+    fetch_latest_release,
+    get_version,
+    normalize_version_string,
+    update_version,
+)
+
+
+def _sync_theme_constants():
+    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
+    APP_BG = ui_theme.APP_BG
+    CARD_BG = ui_theme.CARD_BG
+    TEXT_COLOR = ui_theme.TEXT_COLOR
+    MUTED_COLOR = ui_theme.MUTED_COLOR
+    ACCENT_COLOR = ui_theme.ACCENT_COLOR
+    BORDER_COLOR = ui_theme.BORDER_COLOR
+    INPUT_BG = ui_theme.INPUT_BG
+    INPUT_BORDER = ui_theme.INPUT_BORDER
+    HOVER_BG = ui_theme.HOVER_BG
+    PRESSED_BG = ui_theme.PRESSED_BG
+    SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
+    PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
 
 
 set_theme("light")
-VERSION = get_version()
+_sync_theme_constants()
 registry = EquipmentRegistry()
 
 
@@ -69,31 +93,11 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
             row["eta"].config(text="—", fg=MUTED_COLOR)
 
 
-def prompt_version_update(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
-    new_version = simpledialog.askstring(
-        "버전 업데이트",
-        "새 버전을 입력하세요",
-        initialvalue=version_var.get(),
-        parent=root,
-    )
-    if new_version is None:
-        return
-
-    try:
-        normalized = update_version(new_version)
-    except ValueError:
-        messagebox.showerror("버전 업데이트", "빈 문자열은 버전으로 사용할 수 없습니다.")
-        return
-
-    version_var.set(normalized)
-    title_label.config(text=f"AFCS {normalized}")
-    messagebox.showinfo("버전 업데이트", f"버전이 {normalized}(으)로 저장되었습니다.")
-
-
 def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
     def _prompt_update(release):
-        latest_version = (release.get("version") or "").strip()
-        if not latest_version or latest_version == version_var.get().strip():
+        latest_version = normalize_version_string(release.get("version") or "")
+        current_version = normalize_version_string(version_var.get())
+        if not latest_version or latest_version == current_version:
             return
 
         lines = [f"GitHub 최신 릴리즈: {latest_version}"]
@@ -507,6 +511,7 @@ def apply_theme(
     log_equipment_filter,
 ):
     set_theme(theme_name)
+    _sync_theme_constants()
     root.configure(bg=APP_BG)
     apply_styles(root)
 
@@ -554,7 +559,7 @@ def build_gui():
     root.option_add("*Font", BODY_FONT)
     apply_styles(root)
 
-    version_var = tk.StringVar(value=VERSION)
+    version_var = tk.StringVar(value=get_version())
 
     main = ttk.Frame(root, style="Main.TFrame", padding=20)
     main.grid(row=0, column=0, sticky="nsew")
@@ -586,14 +591,6 @@ def build_gui():
         font=BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
-
-    update_version_button = ttk.Button(
-        header,
-        text="버전 업데이트",
-        style="Secondary.TButton",
-        command=lambda: prompt_version_update(root, version_var, title),
-    )
-    update_version_button.grid(row=0, column=2, rowspan=2, sticky="e", padx=(12, 0))
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")

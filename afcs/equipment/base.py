@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
-RANGE_TABLE_ROOT = Path(__file__).resolve().parent.parent / "rangeTables"
+# 프로젝트 루트의 rangeTables 디렉터리(장비별 서브폴더 보관)를 가리킨다.
+RANGE_TABLE_ROOT = Path(__file__).resolve().parent.parent.parent / "rangeTables"
 
 
 @dataclass
