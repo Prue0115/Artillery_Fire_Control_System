@@ -1,6 +1,7 @@
 import os
 import sys
 import threading
+import webbrowser
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -33,6 +34,7 @@ from afcs.ui_theme import (
     set_theme,
 )
 from afcs.versioning import (
+    DEFAULT_GITHUB_REPO,
     fetch_latest_release,
     get_version,
     normalize_version_string,
@@ -100,19 +102,23 @@ def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: tt
         if not latest_version or latest_version == current_version:
             return
 
-        lines = [f"GitHub 최신 릴리즈: {latest_version}"]
-        release_url = release.get("url")
-        if release_url:
-            lines.append(f"다운로드: {release_url}")
-        lines.append("버전을 업데이트하시겠습니까?")
+        repo_slug = os.environ.get("AFCS_GITHUB_REPO", DEFAULT_GITHUB_REPO)
+        release_url = release.get("url") or (
+            f"https://github.com/{repo_slug}/releases/latest" if repo_slug else None
+        )
 
-        if not messagebox.askyesno("업데이트 확인", "\n".join(lines), parent=root):
+        prompt_lines = [f"{latest_version} 최신 버전을 업데이트하시겠습니까?"]
+        if release_url:
+            prompt_lines.append("예를 선택하면 GitHub 릴리스 페이지가 열립니다.")
+
+        if not messagebox.askyesno("업데이트 확인", "\n".join(prompt_lines), parent=root):
             return
 
         normalized = update_version(latest_version)
         version_var.set(normalized)
         title_label.config(text=f"AFCS {normalized}")
-        messagebox.showinfo("버전 업데이트", f"버전이 {normalized}(으)로 저장되었습니다.")
+        if release_url:
+            webbrowser.open(release_url, new=1)
 
     def _worker():
         release = fetch_latest_release()
