@@ -5,6 +5,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
+import afcs.ui_theme as ui_theme
 from afcs.equipment import EquipmentRegistry
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui_theme import (
@@ -34,7 +35,25 @@ from afcs.ui_theme import (
 from afcs.versioning import fetch_latest_release, get_version, update_version
 
 
+def _sync_theme_constants():
+    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
+    APP_BG = ui_theme.APP_BG
+    CARD_BG = ui_theme.CARD_BG
+    TEXT_COLOR = ui_theme.TEXT_COLOR
+    MUTED_COLOR = ui_theme.MUTED_COLOR
+    ACCENT_COLOR = ui_theme.ACCENT_COLOR
+    BORDER_COLOR = ui_theme.BORDER_COLOR
+    INPUT_BG = ui_theme.INPUT_BG
+    INPUT_BORDER = ui_theme.INPUT_BORDER
+    HOVER_BG = ui_theme.HOVER_BG
+    PRESSED_BG = ui_theme.PRESSED_BG
+    SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
+    PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
+
+
 set_theme("light")
+_sync_theme_constants()
 VERSION = get_version()
 registry = EquipmentRegistry()
 
@@ -508,6 +527,7 @@ def apply_theme(
     log_equipment_filter,
 ):
     set_theme(theme_name)
+    _sync_theme_constants()
     root.configure(bg=APP_BG)
     apply_styles(root)
 
