@@ -9,7 +9,7 @@ import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-INITIAL_VERSION = "1.25.4"
+INITIAL_VERSION = "1.25.3"
 DEFAULT_GITHUB_REPO = "prue0115/Artillery_Fire_Control_System"
 
 _current_version = INITIAL_VERSION
