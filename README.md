@@ -23,5 +23,5 @@ AFCS GUI 전체
 
 ## 버전 관리 파일
 애플리케이션 버전 문자열은 `afcs/VERSION` 파일에 저장되며, `afcs/versioning.py` 모듈이 이 값을 읽고 갱신합니다.
-* `get_version()`은 `afcs/VERSION`이 존재하면 내용을 반환하고, 없을 경우 기본 버전(`1.25.3`)을 기록합니다.
+* `get_version()`은 `afcs/VERSION`이 존재하면 내용을 반환하고, 없을 경우 기본 버전(`1.2025.4`)을 기록합니다.
 * `update_version()`은 사용자가 입력한 새 버전을 정규화한 뒤 `afcs/VERSION`에 저장하여 GUI 타이틀과 버전 확인 기능에서 활용합니다.

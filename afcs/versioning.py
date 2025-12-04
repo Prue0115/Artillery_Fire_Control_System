@@ -6,7 +6,7 @@ from urllib.request import Request, urlopen
 
 BASE_DIR = Path(__file__).resolve().parent
 VERSION_FILE = BASE_DIR / "VERSION"
-DEFAULT_VERSION = "1.25.3"
+DEFAULT_VERSION = "1.2025.4"
 DEFAULT_GITHUB_REPO = "prue0115/Artillery_Fire_Control_System"
 
 
