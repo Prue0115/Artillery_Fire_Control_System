@@ -26,12 +26,10 @@ def normalize_version_string(version: str) -> str:
         return ""
 
     cleaned = version.strip()
-    # 릴리스 제목이 "AFCS 1.25.3"처럼 접두 텍스트를 포함해도 숫자 패턴을 우선 추출한다.
     match = _VERSION_PATTERN.search(cleaned)
     if match:
         return match.group(1)
 
-    # 숫자 패턴이 없을 때는 기존 동작을 유지해 v 접두사만 제거한다.
     return cleaned.lstrip("vV")
 
 
