@@ -108,8 +108,6 @@ def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: tt
         )
 
         prompt_lines = [f"{latest_version} 최신 버전을 업데이트하시겠습니까?"]
-        if release_url:
-            prompt_lines.append("예를 선택하면 GitHub 릴리스 페이지가 열립니다.")
 
         if not messagebox.askyesno("업데이트 확인", "\n".join(prompt_lines), parent=root):
             return
