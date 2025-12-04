@@ -5,6 +5,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 
+import afcs.ui_theme as ui_theme
 from afcs.equipment import EquipmentRegistry
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui_theme import (
@@ -12,6 +13,7 @@ from afcs.ui_theme import (
     APP_BG,
     BODY_FONT,
     CARD_BG,
+    BORDER_COLOR,
     CH_WIDTH,
     ETA_WIDTH,
     HOVER_BG,
@@ -30,10 +32,33 @@ from afcs.ui_theme import (
     ensure_dpi_awareness,
     set_theme,
 )
-from afcs.versioning import fetch_latest_release, get_version, update_version
+from afcs.versioning import (
+    fetch_latest_release,
+    get_version,
+    normalize_version_string,
+    update_version,
+)
+
+
+def _sync_theme_constants():
+    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
+    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
+    APP_BG = ui_theme.APP_BG
+    CARD_BG = ui_theme.CARD_BG
+    TEXT_COLOR = ui_theme.TEXT_COLOR
+    MUTED_COLOR = ui_theme.MUTED_COLOR
+    ACCENT_COLOR = ui_theme.ACCENT_COLOR
+    BORDER_COLOR = ui_theme.BORDER_COLOR
+    INPUT_BG = ui_theme.INPUT_BG
+    INPUT_BORDER = ui_theme.INPUT_BORDER
+    HOVER_BG = ui_theme.HOVER_BG
+    PRESSED_BG = ui_theme.PRESSED_BG
+    SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
+    PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
 
 
 set_theme("light")
+_sync_theme_constants()
 VERSION = get_version()
 registry = EquipmentRegistry()
 
@@ -92,8 +117,9 @@ def prompt_version_update(root: tk.Tk, version_var: tk.StringVar, title_label: t
 
 def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
     def _prompt_update(release):
-        latest_version = (release.get("version") or "").strip()
-        if not latest_version or latest_version == version_var.get().strip():
+        latest_version = normalize_version_string(release.get("version") or "")
+        current_version = normalize_version_string(version_var.get())
+        if not latest_version or latest_version == current_version:
             return
 
         lines = [f"GitHub 최신 릴리즈: {latest_version}"]
@@ -507,6 +533,7 @@ def apply_theme(
     log_equipment_filter,
 ):
     set_theme(theme_name)
+    _sync_theme_constants()
     root.configure(bg=APP_BG)
     apply_styles(root)
 
