@@ -1,9 +1,3 @@
-"""버전 문자열을 관리하고 업데이트 확인을 지원하는 헬퍼.
-
-파일 없이 코드에 선언한 기본값(`INITIAL_VERSION`)을 시작점으로 사용하며,
-실행 중 `update_version()`을 통해 메모리에 유지된 값을 변경할 수 있다.
-"""
-
 import json
 import os
 import re
@@ -44,7 +38,7 @@ def set_version(version: str):
 
     normalized = normalize_version_string(version)
     if not normalized:
-        raise ValueError("Version cannot be empty")
+        raise ValueError("버전을 입력하지 않았습니다.")
 
     global _current_version
     _current_version = normalized
