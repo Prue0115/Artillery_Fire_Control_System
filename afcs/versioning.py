@@ -1,3 +1,17 @@
+"""버전 문자열을 파일과 동기화하며 업데이트 확인을 지원하는 헬퍼.
+
+이 모듈은 두 가지 경로로 버전을 결정합니다.
+
+1. 배포물과 함께 제공되는 `afcs/VERSION` 파일
+2. 코드 안에 정의된 기본 상수 `DEFAULT_VERSION`
+
+`DEFAULT_VERSION`만 있으면 코드 차원에서는 동작할 수 있지만, 실행 환경
+에서 버전을 갱신하거나 배포 아티팩트가 버전 문자열을 유지하려면 파일이
+필수입니다. `afcs/VERSION`은 GUI 타이틀, 빌드 산출물, 타입 검증 과정에서
+일관된 버전을 노출하기 위한 단일 진실 공급원(single source of truth)으로
+동작합니다.
+"""
+
 import json
 import os
 from pathlib import Path
