@@ -356,7 +356,7 @@ def calculate_and_display(
         low_message = (
             "해당 장비는 저각 사격을 지원하지 않습니다"
             if low_override == []
-            else "저각 데이터가 없습니다. rangeTables를 확인하세요"
+            else "저각 데이터가 없습니다."
         )
 
     if high_charges:
@@ -374,7 +374,7 @@ def calculate_and_display(
         high_message = (
             "해당 장비는 고각 사격을 지원하지 않습니다"
             if high_override == []
-            else "고각 데이터가 없습니다. rangeTables를 확인하세요"
+            else "고각 데이터가 없습니다."
         )
 
     update_solution_table(low_rows, low_status, low_solutions, message=low_message)
