@@ -1,4 +1,3 @@
-import argparse
 import os
 import sys
 import threading
@@ -69,7 +68,7 @@ def _sync_theme_constants():
     ETA_WIDTH = ui_theme.ETA_WIDTH
 
 
-ACTIVE_PROFILE = resolve_device_profile(None)
+ACTIVE_PROFILE = resolve_device_profile()
 apply_device_profile(ACTIVE_PROFILE)
 set_theme("light")
 _sync_theme_constants()
@@ -940,19 +939,8 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="AFCS UI 실행 옵션")
-    parser.add_argument(
-        "--device-profile",
-        choices=["desktop", "mobile"],
-        help="데스크톱/모바일 레이아웃 중 하나를 선택합니다.",
-    )
-    return parser.parse_args()
-
-
 def main():
-    args = parse_args()
-    profile = resolve_device_profile(args.device_profile)
+    profile = resolve_device_profile()
     global ACTIVE_PROFILE
     if profile.name != ACTIVE_PROFILE.name:
         ACTIVE_PROFILE = profile
