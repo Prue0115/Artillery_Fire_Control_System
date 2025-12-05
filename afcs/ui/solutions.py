@@ -109,7 +109,7 @@ def calculate_and_display(
         low_message = None
     else:
         low_solutions = []
-        low_message = "해당 장비는 저각 사격을 지원하지 않습니다" if low_override == [] else "저각 데이터가 없습니다. rangeTables를 확인하세요"
+        low_message = "저각 사격을 지원하지 않습니다" if low_override == [] else "저각 데이터가 없습니다. rangeTables를 확인하세요"
 
     if high_charges:
         high_solutions = find_solutions(
