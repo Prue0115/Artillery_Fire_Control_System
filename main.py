@@ -1,6 +1,11 @@
+import json
 import os
+import random
+import string
 import sys
+import tempfile
 import threading
+import time
 import webbrowser
 from datetime import datetime
 import tkinter as tk
@@ -10,28 +15,15 @@ import afcs.ui_theme as ui_theme
 from afcs.equipment import EquipmentRegistry
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui_theme import (
-    ACCENT_COLOR,
-    APP_BG,
     BODY_FONT,
-    CARD_BG,
-    BORDER_COLOR,
     CH_WIDTH,
     ETA_WIDTH,
-    HOVER_BG,
     ICONS_DIR,
-    INPUT_BG,
-    INPUT_BORDER,
     MILL_WIDTH,
     MONO_FONT,
-    MUTED_COLOR,
-    PRESSED_BG,
-    PRIMARY_PRESSED,
-    SECONDARY_ACTIVE,
-    TEXT_COLOR,
     THEMES,
     TITLE_FONT,
     ensure_dpi_awareness,
-    set_theme,
 )
 from afcs.versioning import (
     DEFAULT_GITHUB_REPO,
@@ -42,26 +34,103 @@ from afcs.versioning import (
 )
 
 
-def _sync_theme_constants():
-    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
-    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
-    APP_BG = ui_theme.APP_BG
-    CARD_BG = ui_theme.CARD_BG
-    TEXT_COLOR = ui_theme.TEXT_COLOR
-    MUTED_COLOR = ui_theme.MUTED_COLOR
-    ACCENT_COLOR = ui_theme.ACCENT_COLOR
-    BORDER_COLOR = ui_theme.BORDER_COLOR
-    INPUT_BG = ui_theme.INPUT_BG
-    INPUT_BORDER = ui_theme.INPUT_BORDER
-    HOVER_BG = ui_theme.HOVER_BG
-    PRESSED_BG = ui_theme.PRESSED_BG
-    SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
-    PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
-
-
-set_theme("light")
-_sync_theme_constants()
+ui_theme.set_theme("light")
 registry = EquipmentRegistry()
+
+
+class ShareManager:
+    def __init__(self, root: tk.Tk, on_receive, on_stop=None):
+        self.root = root
+        self.on_receive = on_receive
+        self.on_stop = on_stop
+        self.room_code: str | None = None
+        self.role: str | None = None  # "host" or "viewer"
+        self._poll_job = None
+        self._last_seen: float | None = None
+
+    def _room_file(self, code: str):
+        return os.path.join(tempfile.gettempdir(), f"afcs_share_{code}.json")
+
+    def _generate_code(self) -> str:
+        alphabet = string.ascii_uppercase + string.digits
+        return "".join(random.choice(alphabet) for _ in range(6))
+
+    def start_host(self):
+        self.stop()
+        for _ in range(10):
+            candidate = self._generate_code()
+            if not os.path.exists(self._room_file(candidate)):
+                self.room_code = candidate
+                self.role = "host"
+                self._last_seen = None
+                self._write_payload({"status": "ready"})
+                return candidate
+        raise RuntimeError("방 코드를 생성할 수 없습니다. 잠시 후 다시 시도하세요.")
+
+    def join_room(self, code: str):
+        self.stop()
+        filepath = self._room_file(code)
+        if not os.path.exists(filepath):
+            raise FileNotFoundError("해당 방 코드를 찾을 수 없습니다.")
+        self.room_code = code
+        self.role = "viewer"
+        self._last_seen = None
+        self._start_polling()
+        self._read_and_apply()
+
+    def stop(self):
+        if self._poll_job:
+            self.root.after_cancel(self._poll_job)
+            self._poll_job = None
+        if self.role == "host" and self.room_code:
+            try:
+                os.remove(self._room_file(self.room_code))
+            except FileNotFoundError:
+                pass
+        self.room_code = None
+        self.role = None
+        self._last_seen = None
+        if self.on_stop:
+            self.on_stop()
+
+    def broadcast(self, payload: dict):
+        if not self.room_code:
+            return
+        payload = payload | {"sent_at": time.time(), "role": self.role}
+        self._write_payload(payload)
+
+    def _write_payload(self, payload: dict):
+        if not self.room_code:
+            return
+        data = {"updated_at": time.time(), "payload": payload}
+        filepath = self._room_file(self.room_code)
+        with open(filepath, "w", encoding="utf-8") as fp:
+            json.dump(data, fp, ensure_ascii=False, indent=2)
+
+    def _read_and_apply(self):
+        if not self.room_code:
+            return
+        filepath = self._room_file(self.room_code)
+        try:
+            with open(filepath, "r", encoding="utf-8") as fp:
+                data = json.load(fp)
+        except FileNotFoundError:
+            messagebox.showwarning("제원 공유", "공유 방이 사라졌습니다. 공유를 종료합니다.")
+            self.stop()
+            return
+        updated_at = data.get("updated_at")
+        if updated_at is None or updated_at == self._last_seen:
+            return
+        self._last_seen = updated_at
+        payload = data.get("payload")
+        if payload:
+            self.on_receive(payload)
+
+    def _start_polling(self):
+        if not self.room_code:
+            return
+        self._read_and_apply()
+        self._poll_job = self.root.after(1000, self._start_polling)
 
 
 def format_solution_list(title: str, solutions):
@@ -86,13 +155,13 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
     for idx, row in enumerate(rows):
         if idx < len(solutions):
             solution = solutions[idx]
-            row["ch"].config(text=f"{solution['charge']}", fg=TEXT_COLOR)
-            row["mill"].config(text=f"{solution['mill']:.2f}", fg=TEXT_COLOR)
-            row["eta"].config(text=f"{solution['eta']:.1f}", fg=TEXT_COLOR)
+            row["ch"].config(text=f"{solution['charge']}", fg=ui_theme.TEXT_COLOR)
+            row["mill"].config(text=f"{solution['mill']:.2f}", fg=ui_theme.TEXT_COLOR)
+            row["eta"].config(text=f"{solution['eta']:.1f}", fg=ui_theme.TEXT_COLOR)
         else:
-            row["ch"].config(text="—", fg=MUTED_COLOR)
-            row["mill"].config(text="—", fg=MUTED_COLOR)
-            row["eta"].config(text="—", fg=MUTED_COLOR)
+            row["ch"].config(text="—", fg=ui_theme.MUTED_COLOR)
+            row["mill"].config(text="—", fg=ui_theme.MUTED_COLOR)
+            row["eta"].config(text="—", fg=ui_theme.MUTED_COLOR)
 
 
 def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
@@ -138,8 +207,8 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
         tk.Label(
             log_body,
             text="선택한 조건에 맞는 기록이 없습니다.",
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
+            bg=ui_theme.CARD_BG,
+            fg=ui_theme.MUTED_COLOR,
             font=MONO_FONT,
             anchor="w",
         ).grid(row=0, column=0, sticky="w", padx=12, pady=8)
@@ -153,8 +222,8 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
         tk.Label(
             card,
             text=f"시간 {entry['timestamp'].strftime('%H:%M')} · 장비 {entry['system']}",
-            bg=CARD_BG,
-            fg=ACCENT_COLOR,
+            bg=ui_theme.CARD_BG,
+            fg=ui_theme.ACCENT_COLOR,
             font=(MONO_FONT[0], 12, "bold"),
             anchor="w",
         ).grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
@@ -166,8 +235,8 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
                 f"Target ALT {entry['target_alt']:>5g}m  |  "
                 f"Distance {entry['distance']:>6g}m"
             ),
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
+            bg=ui_theme.CARD_BG,
+            fg=ui_theme.MUTED_COLOR,
             font=MONO_FONT,
             anchor="w",
         ).grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
@@ -183,8 +252,8 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
             tk.Label(
                 table,
                 text=text,
-                bg=CARD_BG,
-                fg=TEXT_COLOR,
+                bg=ui_theme.CARD_BG,
+                fg=ui_theme.TEXT_COLOR,
                 font=(MONO_FONT[0], 11, "bold"),
                 anchor="w",
             ).grid(row=0, column=column, columnspan=columnspan, sticky="w")
@@ -197,8 +266,8 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
                 table,
                 text=label_text,
                 width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR,
+                bg=ui_theme.CARD_BG,
+                fg=ui_theme.MUTED_COLOR,
                 font=(MONO_FONT[0], 10, "bold"),
                 anchor="w",
             ).grid(row=1, column=column, sticky="w")
@@ -221,8 +290,8 @@ def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
                 table,
                 text=value,
                 width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR if value == "—" else TEXT_COLOR,
+                bg=ui_theme.CARD_BG,
+                fg=ui_theme.MUTED_COLOR if value == "—" else ui_theme.TEXT_COLOR,
                 font=MONO_FONT,
                 anchor="w",
             ).grid(row=row_idx, column=column, sticky="w", pady=(2, 0))
@@ -296,6 +365,7 @@ def calculate_and_display(
     log_equipment_filter,
     log_body,
     sync_layout=None,
+    share_manager: ShareManager | None = None,
 ):
     try:
         my_alt = float(my_altitude_entry.get())
@@ -376,154 +446,189 @@ def calculate_and_display(
         sync_layout=sync_layout,
     )
 
-
-def apply_styles(root: tk.Tk):
-    style = ttk.Style()
-    style.theme_use("clam")
-
-    style.configure("TFrame", background=APP_BG)
-    style.configure("Main.TFrame", background=APP_BG)
-    style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
-
-    style.configure("Body.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=BODY_FONT)
-    style.configure("Muted.TLabel", background=APP_BG, foreground=MUTED_COLOR, font=BODY_FONT)
-    style.configure("Title.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=TITLE_FONT)
-    style.configure("CardBody.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=BODY_FONT, anchor="w")
-    style.configure("TableHeader.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=(BODY_FONT[0], 11, "bold"))
-    style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
-
-    style.configure(
-        "TEntry",
-        fieldbackground=INPUT_BG,
-        background=INPUT_BG,
-        foreground=TEXT_COLOR,
-        bordercolor=INPUT_BORDER,
-        lightcolor=INPUT_BORDER,
-        darkcolor=INPUT_BORDER,
-        insertcolor=TEXT_COLOR,
-        relief="solid",
-    )
-
-    style.configure(
-        "TCombobox",
-        fieldbackground=INPUT_BG,
-        background=INPUT_BG,
-        foreground=TEXT_COLOR,
-        bordercolor=INPUT_BORDER,
-        lightcolor=INPUT_BORDER,
-        darkcolor=INPUT_BORDER,
-        arrowcolor=TEXT_COLOR,
-    )
-    style.map(
-        "TCombobox",
-        fieldbackground=[("readonly", INPUT_BG), ("!disabled", INPUT_BG)],
-        foreground=[("readonly", TEXT_COLOR), ("!disabled", TEXT_COLOR)],
-        bordercolor=[("focus", ACCENT_COLOR), ("!focus", INPUT_BORDER)],
-        arrowcolor=[("disabled", MUTED_COLOR), ("!disabled", TEXT_COLOR)],
-    )
-    combobox_popup_options = {
-        "background": INPUT_BG,
-        "foreground": TEXT_COLOR,
-        "selectBackground": ACCENT_COLOR,
-        "selectForeground": "#ffffff",
-        "borderColor": BORDER_COLOR,
-    }
-    for key, value in combobox_popup_options.items():
-        root.option_add(f"*TCombobox*Listbox.{key}", value)
-        root.option_add(f"*Combobox*Listbox.{key}", value)
-
-    style.configure(
-        "Primary.TButton",
-        font=(BODY_FONT[0], 12, "bold"),
-        foreground="#ffffff",
-        background=ACCENT_COLOR,
-        borderwidth=0,
-        padding=(14, 10),
-    )
-    style.map(
-        "Primary.TButton",
-        background=[("active", ACCENT_COLOR), ("pressed", PRIMARY_PRESSED)],
-        foreground=[("disabled", "#d1d1d6")],
-    )
-
-    style.configure(
-        "Secondary.TButton",
-        font=(BODY_FONT[0], 12, "bold"),
-        foreground=ACCENT_COLOR,
-        background=CARD_BG,
-        borderwidth=1,
-        padding=(14, 10),
-        relief="solid",
-    )
-    style.map(
-        "Secondary.TButton",
-        background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
-        foreground=[("disabled", "#c7c7cc")],
-    )
-
-    style.configure(
-        "ThemeToggle.TButton",
-        padding=(6, 6),
-        relief="solid",
-        borderwidth=1,
-        background=CARD_BG,
-        foreground=ACCENT_COLOR,
-    )
-    style.map(
-        "ThemeToggle.TButton",
-        background=[("active", HOVER_BG), ("pressed", PRESSED_BG)],
-    )
-
-    style.configure(
-        "Card.TLabelframe",
-        background=CARD_BG,
-        borderwidth=0,
-        relief="flat",
-        padding=(12, 12, 12, 10),
-    )
-    style.configure(
-        "Card.TLabelframe.Label",
-        background=CARD_BG,
-        foreground=TEXT_COLOR,
-        font=(BODY_FONT[0], 12, "bold"),
-    )
+    if share_manager and share_manager.room_code:
+        share_manager.broadcast(
+            {
+                "system": system,
+                "my_alt": my_alt,
+                "target_alt": target_alt,
+                "distance": distance,
+                "altitude_delta": altitude_delta,
+                "low": low_solutions,
+                "high": high_solutions,
+            }
+        )
 
 
-def refresh_solution_rows(rows):
-    for row in rows:
-        for key in ("ch", "mill", "eta"):
-            widget = row[key]
-            widget.configure(bg=CARD_BG)
-            widget.configure(fg=MUTED_COLOR if widget.cget("text") == "—" else TEXT_COLOR)
-
-
-def configure_log_canvas(canvas: tk.Canvas):
-    canvas.configure(
-        bg=CARD_BG,
-        highlightbackground=BORDER_COLOR,
-        highlightcolor=BORDER_COLOR,
-    )
-
-
-def apply_theme(
+def setup_share_feature(
     root: tk.Tk,
-    theme_name: str,
-    *,
-    solution_tables,
-    log_body: ttk.Frame,
-    log_entries,
-    log_equipment_filter,
+    equipment_names: list[str],
+    system_var: tk.StringVar,
+    my_altitude_entry: ttk.Entry,
+    target_altitude_entry: ttk.Entry,
+    distance_entry: ttk.Entry,
+    low_rows,
+    low_status: ttk.Label,
+    high_rows,
+    high_status: ttk.Label,
+    delta_label: ttk.Label,
+    share_button: ttk.Button,
 ):
-    set_theme(theme_name)
-    _sync_theme_constants()
-    root.configure(bg=APP_BG)
-    apply_styles(root)
+    share_status_var = tk.StringVar(value="제원 공유 꺼짐")
+    share_manager: ShareManager | None = None
 
-    for rows in solution_tables:
-        refresh_solution_rows(rows)
+    def _share_status_text(room_code: str | None, role: str | None) -> str:
+        if not room_code:
+            return "제원 공유 꺼짐"
+        role_name = "호스트" if role == "host" else "뷰어" if role == "viewer" else "알 수 없음"
+        return f"제원 공유 중 · 방 코드 {room_code} ({role_name})"
 
-    configure_log_canvas(log_body.master)
-    render_log(log_body, log_entries, log_equipment_filter.get())
+    def _update_share_status(room_code: str | None = None, role: str | None = None):
+        share_status_var.set(_share_status_text(room_code, role))
+
+    def apply_shared_payload(payload: dict):
+        system = payload.get("system")
+        if system and system in equipment_names:
+            system_var.set(system)
+        for entry, key in (
+            (my_altitude_entry, "my_alt"),
+            (target_altitude_entry, "target_alt"),
+            (distance_entry, "distance"),
+        ):
+            value = payload.get(key)
+            if value is not None:
+                entry.delete(0, tk.END)
+                entry.insert(0, str(value))
+
+        low = payload.get("low") or []
+        high = payload.get("high") or []
+        update_solution_table(low_rows, low_status, low)
+        update_solution_table(high_rows, high_status, high)
+
+        altitude_delta = payload.get("altitude_delta")
+        if altitude_delta is not None:
+            delta_label.config(text=f"고도 차이(사수-목표): {altitude_delta:+.1f} m")
+
+        _update_share_status(
+            share_manager.room_code if share_manager else None,
+            share_manager.role if share_manager else None,
+        )
+
+    share_manager = ShareManager(
+        root,
+        apply_shared_payload,
+        lambda: _update_share_status(None, None),
+    )
+
+    def open_share_dialog():
+        dialog = tk.Toplevel(root)
+        dialog.title("사격 제원 공유")
+        dialog.configure(bg=ui_theme.APP_BG)
+        dialog.resizable(False, False)
+        dialog.grab_set()
+
+        status_value = tk.StringVar(
+            value=share_manager.room_code or "생성된 방이 없습니다",
+        )
+        role_value = tk.StringVar(
+            value="없음" if not share_manager.role else ("호스트" if share_manager.role == "host" else "뷰어"),
+        )
+
+        def refresh_status():
+            status_value.set(share_manager.room_code or "생성된 방이 없습니다")
+            role_value.set(
+                "없음"
+                if not share_manager.role
+                else ("호스트" if share_manager.role == "host" else "뷰어")
+            )
+
+        def create_room():
+            try:
+                code = share_manager.start_host()
+            except Exception as exc:  # noqa: BLE001
+                messagebox.showerror("제원 공유", str(exc), parent=dialog)
+                return
+            _update_share_status(code, "host")
+            status_value.set(code)
+            role_value.set("호스트")
+            messagebox.showinfo(
+                "제원 공유", f"방 코드 {code}가 생성되었습니다. 상대에게 전달하세요.", parent=dialog
+            )
+
+        def join_room():
+            code = code_entry.get().strip().upper()
+            if not code:
+                messagebox.showwarning("제원 공유", "방 코드를 입력하세요.", parent=dialog)
+                return
+            try:
+                share_manager.join_room(code)
+            except FileNotFoundError:
+                messagebox.showerror("제원 공유", "해당 코드의 방을 찾을 수 없습니다.", parent=dialog)
+                return
+            _update_share_status(code, "viewer")
+            refresh_status()
+            messagebox.showinfo("제원 공유", "방에 입장했습니다. 계산 결과가 공유됩니다.", parent=dialog)
+
+        def stop_share():
+            if not share_manager.room_code:
+                messagebox.showinfo("제원 공유", "현재 참여 중인 방이 없습니다.", parent=dialog)
+                return
+            share_manager.stop()
+            refresh_status()
+            _update_share_status(None, None)
+            messagebox.showinfo("제원 공유", "제원 공유를 종료했습니다.", parent=dialog)
+
+        ttk.Label(dialog, text="제원 공유", style="Title.TLabel").grid(
+            row=0, column=0, columnspan=2, sticky="w", padx=12, pady=(12, 6)
+        )
+        ttk.Label(
+            dialog,
+            text="계산 시 내 제원이 방 코드로 연결된 사용자에게 공유됩니다.\n"
+            "방 코드 생성·입장 후 필요 시 공유 중단을 눌러 종료하세요.",
+            style="Muted.TLabel",
+            justify="left",
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=12, pady=(0, 8))
+
+        ttk.Label(dialog, text="방 코드 생성", style="Body.TLabel").grid(
+            row=2, column=0, sticky="w", padx=12, pady=4
+        )
+        ttk.Button(dialog, text="방 만들기", style="Primary.TButton", command=create_room).grid(
+            row=2, column=1, sticky="e", padx=12, pady=4
+        )
+
+        ttk.Label(dialog, text="방 코드 입력", style="Body.TLabel").grid(
+            row=3, column=0, sticky="w", padx=12, pady=4
+        )
+        code_entry = ttk.Entry(dialog)
+        code_entry.grid(row=3, column=1, sticky="ew", padx=12, pady=4)
+        dialog.columnconfigure(1, weight=1)
+
+        ttk.Button(dialog, text="입장하기", style="Secondary.TButton", command=join_room).grid(
+            row=4, column=1, sticky="e", padx=12, pady=(0, 8)
+        )
+
+        ttk.Button(dialog, text="공유 중단", style="Secondary.TButton", command=stop_share).grid(
+            row=5, column=1, sticky="e", padx=12, pady=(0, 12)
+        )
+
+        status_frame = ttk.Frame(dialog, style="Card.TFrame", padding=12)
+        status_frame.grid(row=6, column=0, columnspan=2, sticky="ew", padx=12, pady=(0, 12))
+        status_frame.columnconfigure(1, weight=1)
+        ttk.Label(status_frame, text="현재 코드", style="Muted.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Label(status_frame, textvariable=status_value, style="Body.TLabel").grid(
+            row=0, column=1, sticky="w"
+        )
+        ttk.Label(status_frame, text="역할", style="Muted.TLabel").grid(
+            row=1, column=0, sticky="w", pady=(4, 0)
+        )
+    ttk.Label(status_frame, textvariable=role_value, style="Body.TLabel").grid(
+        row=1, column=1, sticky="w", pady=(4, 0)
+    )
+
+    share_button.configure(command=open_share_dialog)
+    return share_manager, share_status_var
 
 
 def build_solution_table(parent):
@@ -538,9 +643,9 @@ def build_solution_table(parent):
 
     rows = []
     for i in range(3):
-        ch = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=4)
-        mill = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=12)
-        eta = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=6)
+        ch = tk.Label(table, text="—", bg=ui_theme.CARD_BG, fg=ui_theme.MUTED_COLOR, font=MONO_FONT, anchor="w", width=4)
+        mill = tk.Label(table, text="—", bg=ui_theme.CARD_BG, fg=ui_theme.MUTED_COLOR, font=MONO_FONT, anchor="w", width=12)
+        eta = tk.Label(table, text="—", bg=ui_theme.CARD_BG, fg=ui_theme.MUTED_COLOR, font=MONO_FONT, anchor="w", width=6)
 
         ch.grid(row=i + 1, column=0, sticky="w", pady=3)
         mill.grid(row=i + 1, column=1, sticky="w", pady=3)
@@ -559,9 +664,9 @@ def build_solution_table(parent):
 def build_gui():
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
-    root.configure(bg=APP_BG)
+    root.configure(bg=ui_theme.APP_BG)
     root.option_add("*Font", BODY_FONT)
-    apply_styles(root)
+    ui_theme.apply_styles(root)
 
     version_var = tk.StringVar(value=get_version())
 
@@ -596,8 +701,14 @@ def build_gui():
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
 
+    menu_bar = ttk.Frame(main, style="Main.TFrame")
+    menu_bar.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+    for idx in range(3):
+        menu_bar.columnconfigure(idx, weight=0)
+    menu_bar.columnconfigure(3, weight=1)
+
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
-    input_card.grid(row=1, column=0, sticky="ew")
+    input_card.grid(row=2, column=0, sticky="ew")
     input_card.columnconfigure(1, weight=1)
 
     ttk.Label(input_card, text="My ALT (m)", style="CardBody.TLabel").grid(
@@ -619,7 +730,7 @@ def build_gui():
     distance_entry.grid(row=2, column=1, sticky="ew", pady=4)
 
     button_row = ttk.Frame(main, style="Main.TFrame")
-    button_row.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+    button_row.grid(row=3, column=0, sticky="ew", pady=(12, 0))
     button_row.columnconfigure(0, weight=1)
 
     calculate_button = ttk.Button(
@@ -631,7 +742,7 @@ def build_gui():
     calculate_button.grid(row=0, column=0, sticky="ew")
 
     results_card = ttk.Frame(main, style="Card.TFrame", padding=16)
-    results_card.grid(row=3, column=0, sticky="ew", pady=(16, 0))
+    results_card.grid(row=4, column=0, sticky="ew", pady=(16, 0))
     results_card.columnconfigure(0, weight=1)
     results_card.columnconfigure(1, weight=1)
 
@@ -647,13 +758,9 @@ def build_gui():
     high_rows, high_status = build_solution_table(high_frame)
 
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
-    delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
+    delta_label.grid(row=5, column=0, sticky="w", pady=(10, 0))
 
     theme_var = tk.StringVar(value="light")
-
-    bottom_bar = ttk.Frame(main, style="Main.TFrame")
-    bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
-    bottom_bar.columnconfigure(0, weight=1)
 
     try:
         root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
@@ -663,16 +770,40 @@ def build_gui():
         root.light_icon_base = root.dark_icon_base = None
 
     theme_toggle = ttk.Button(
-        bottom_bar,
-        text="" if root.light_icon_base else "🌞",
+        menu_bar,
+        text="다크 모드",  # 기본 텍스트는 이미지가 없을 때만 노출
         style="ThemeToggle.TButton",
         image=root.light_icon_base if root.light_icon_base else None,
         cursor="hand2",
+        padding=(10, 6),
     )
-    theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
+    theme_toggle.grid(row=0, column=1, sticky="w", padx=(6, 6))
 
-    log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
-    log_toggle_button.grid(row=0, column=2, sticky="e")
+    log_toggle_button = ttk.Button(menu_bar, text="기록", style="Secondary.TButton")
+    log_toggle_button.grid(row=0, column=0, sticky="w")
+
+    share_button = ttk.Button(menu_bar, text="사격 제원 공유", style="Primary.TButton")
+    share_button.grid(row=0, column=2, sticky="w")
+
+    share_manager, share_status_var = setup_share_feature(
+        root,
+        equipment_names,
+        system_var,
+        my_altitude_entry,
+        target_altitude_entry,
+        distance_entry,
+        low_rows,
+        low_status,
+        high_rows,
+        high_status,
+        delta_label,
+        share_button,
+    )
+
+    share_state_label = ttk.Label(
+        main, textvariable=share_status_var, style="Muted.TLabel"
+    )
+    share_state_label.grid(row=6, column=0, sticky="w")
 
     log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
     log_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=12)
@@ -701,7 +832,7 @@ def build_gui():
         highlightthickness=1,
         borderwidth=0,
     )
-    configure_log_canvas(log_canvas)
+    ui_theme.configure_log_canvas(log_canvas)
     log_canvas.grid(row=1, column=0, sticky="nsew")
 
     log_body = ttk.Frame(log_canvas, style="Card.TFrame")
@@ -812,13 +943,14 @@ def build_gui():
     def toggle_theme():
         new_theme = "dark" if theme_var.get() == "light" else "light"
         theme_var.set(new_theme)
-        apply_theme(
+        ui_theme.apply_theme(
             root,
             new_theme,
             solution_tables=[low_rows, high_rows],
             log_body=log_body,
             log_entries=log_entries,
             log_equipment_filter=log_equipment_filter,
+            render_log_fn=render_log,
         )
 
         _apply_toggle_icon(new_theme)
@@ -828,15 +960,23 @@ def build_gui():
     def _apply_toggle_icon(mode: str):
         if mode == "light":
             img = root.light_icon_base if root.light_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌞")
+            theme_toggle.configure(
+                image=img,
+                text="다크 모드" if img else "🌞",
+                compound="left",
+            )
         else:
             img = root.dark_icon_base if root.dark_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌙")
+            theme_toggle.configure(
+                image=img,
+                text="라이트 모드" if img else "🌙",
+                compound="left",
+            )
 
     _sync_layout()
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
-    main.rowconfigure(3, weight=1)
+    main.rowconfigure(4, weight=1)
 
     calculate_button.configure(
         command=lambda: calculate_and_display(
@@ -853,8 +993,15 @@ def build_gui():
             log_equipment_filter,
             log_body,
             _sync_layout,
+            share_manager,
         )
     )
+
+    def _on_close():
+        share_manager.stop()
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", _on_close)
 
     root.after(500, lambda: check_latest_release(root, version_var, title))
 
