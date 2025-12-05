@@ -65,6 +65,14 @@ PC에서는 데스크톱 프로필이 기본 적용되고, Android 등 모바일
 - **모바일 APK**: Tkinter는 Android에서 기본 미지원이므로, `afcs` 핵심 로직을 재사용하면서 Kivy/Briefcase 등 모바일 런타임으로 포팅해 APK를 만드는 절차 요약.
 - **Android 빌드 상세**: Buildozer용 예제 엔트리(`mobile/kivy_main.py`)와 `buildozer.spec` 설정 예시는 [`docs/android_build.md`](docs/android_build.md) 참고.
 
+## 📱 Android APK 빌드 빠른 요약
+1. **준비**: Ubuntu/WSL2에서 가상환경 생성 후 `pip install --upgrade buildozer Cython kivy` 실행.
+2. **엔트리 지정**: 루트에 있는 `mobile/kivy_main.py`를 `buildozer.spec`의 `source.main`으로 설정하고, `requirements = python3,kivy,requests`와 `source.include_exts = py,json,csv,png,ico`로 리소스를 포함.
+3. **빌드**: 가상환경을 활성화한 상태에서 `buildozer -v android debug` 실행 → 완료되면 `bin/*.apk`가 생성됩니다.
+4. **배포/테스트**: `buildozer android deploy run`으로 USB 디버깅된 기기에 설치하거나, 생성된 APK를 직접 배포하세요.
+
+자세한 설정 옵션과 문제 해결 방법은 [`docs/android_build.md`](docs/android_build.md)에서 단계별로 확인할 수 있습니다.
+
 ➡️ 자세한 단계는 [`docs/build_targets.md`](docs/build_targets.md)에서 확인하세요.
 
 ## 🧪 코드 검사
