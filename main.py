@@ -2,13 +2,14 @@ import os
 import sys
 import threading
 import webbrowser
-from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 import afcs.ui_theme as ui_theme
 from afcs.device_profile import DeviceProfile, resolve_device_profile
 from afcs.equipment import EquipmentRegistry
+from afcs.log_view import log_calculation, render_log
+from afcs.menu_bar import MenuBar
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui_theme import (
     ACCENT_COLOR,
@@ -31,7 +32,6 @@ from afcs.ui_theme import (
     TEXT_COLOR,
     THEMES,
     TITLE_FONT,
-    apply_device_profile,
     ensure_dpi_awareness,
     set_theme,
 )
@@ -47,7 +47,6 @@ from afcs.versioning import (
 def _sync_theme_constants():
     global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
     global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
-    global TITLE_FONT, BODY_FONT, MONO_FONT, CH_WIDTH, MILL_WIDTH, ETA_WIDTH
     APP_BG = ui_theme.APP_BG
     CARD_BG = ui_theme.CARD_BG
     TEXT_COLOR = ui_theme.TEXT_COLOR
@@ -60,23 +59,11 @@ def _sync_theme_constants():
     PRESSED_BG = ui_theme.PRESSED_BG
     SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
     PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
-    TITLE_FONT = ui_theme.TITLE_FONT
-    BODY_FONT = ui_theme.BODY_FONT
-    MONO_FONT = ui_theme.MONO_FONT
-    CH_WIDTH = ui_theme.CH_WIDTH
-    MILL_WIDTH = ui_theme.MILL_WIDTH
-    ETA_WIDTH = ui_theme.ETA_WIDTH
 
 
-ACTIVE_PROFILE = resolve_device_profile()
-apply_device_profile(ACTIVE_PROFILE)
 set_theme("light")
 _sync_theme_constants()
 registry = EquipmentRegistry()
-
-
-def _scale_padding(value: int, *, profile: DeviceProfile) -> int:
-    return int(round(value * profile.padding_scale))
 
 
 def format_solution_list(title: str, solutions):
@@ -101,13 +88,13 @@ def update_solution_table(rows, status_label, solutions, message: str | None = N
     for idx, row in enumerate(rows):
         if idx < len(solutions):
             solution = solutions[idx]
-            row["ch"].config(text=f"{solution['charge']}", fg=TEXT_COLOR)
-            row["mill"].config(text=f"{solution['mill']:.2f}", fg=TEXT_COLOR)
-            row["eta"].config(text=f"{solution['eta']:.1f}", fg=TEXT_COLOR)
+            row["ch"].config(text=f"{solution['charge']}", fg=ui_theme.TEXT_COLOR)
+            row["mill"].config(text=f"{solution['mill']:.2f}", fg=ui_theme.TEXT_COLOR)
+            row["eta"].config(text=f"{solution['eta']:.1f}", fg=ui_theme.TEXT_COLOR)
         else:
-            row["ch"].config(text="—", fg=MUTED_COLOR)
-            row["mill"].config(text="—", fg=MUTED_COLOR)
-            row["eta"].config(text="—", fg=MUTED_COLOR)
+            row["ch"].config(text="—", fg=ui_theme.MUTED_COLOR)
+            row["mill"].config(text="—", fg=ui_theme.MUTED_COLOR)
+            row["eta"].config(text="—", fg=ui_theme.MUTED_COLOR)
 
 
 def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
@@ -139,164 +126,6 @@ def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: tt
             root.after(0, lambda: _prompt_update(release))
 
     threading.Thread(target=_worker, daemon=True).start()
-def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
-    for child in log_body.winfo_children():
-        child.destroy()
-
-    filtered_entries = sorted(entries, key=lambda e: e["timestamp"], reverse=True)
-    if equipment_filter and equipment_filter != "전체":
-        filtered_entries = [
-            e for e in filtered_entries if e["system"] == equipment_filter
-        ]
-
-    if not filtered_entries:
-        tk.Label(
-            log_body,
-            text="선택한 조건에 맞는 기록이 없습니다.",
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
-            anchor="w",
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=8)
-        return
-
-    for idx, entry in enumerate(filtered_entries):
-        card = ttk.Frame(log_body, style="Card.TFrame")
-        card.grid(row=idx * 2, column=0, sticky="ew", padx=0, pady=(0, 6))
-        card.columnconfigure(0, weight=1)
-
-        tk.Label(
-            card,
-            text=f"시간 {entry['timestamp'].strftime('%H:%M')} · 장비 {entry['system']}",
-            bg=CARD_BG,
-            fg=ACCENT_COLOR,
-            font=(MONO_FONT[0], 12, "bold"),
-            anchor="w",
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
-
-        tk.Label(
-            card,
-            text=(
-                f"My ALT {entry['my_alt']:>5g}m  |  "
-                f"Target ALT {entry['target_alt']:>5g}m  |  "
-                f"Distance {entry['distance']:>6g}m"
-            ),
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
-            anchor="w",
-        ).grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
-
-        table = ttk.Frame(card, style="Card.TFrame")
-        table.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 10))
-        for col in range(7):
-            weight = 0 if col == 3 else 1
-            table.grid_columnconfigure(col, weight=weight, minsize=0)
-        table.grid_columnconfigure(3, minsize=16)
-
-        def _header(text, column, columnspan=1):
-            tk.Label(
-                table,
-                text=text,
-                bg=CARD_BG,
-                fg=TEXT_COLOR,
-                font=(MONO_FONT[0], 11, "bold"),
-                anchor="w",
-            ).grid(row=0, column=column, columnspan=columnspan, sticky="w")
-
-        _header("LOW", 0, 3)
-        _header("HIGH", 4, 3)
-
-        def _column_header(label_text, column, width):
-            tk.Label(
-                table,
-                text=label_text,
-                width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR,
-                font=(MONO_FONT[0], 10, "bold"),
-                anchor="w",
-            ).grid(row=1, column=column, sticky="w")
-
-        for idx_col, (label_text, width) in enumerate(
-            (("CH", CH_WIDTH), ("MILL", MILL_WIDTH), ("ETA", ETA_WIDTH))
-        ):
-            _column_header(label_text, idx_col, width)
-            _column_header(label_text, idx_col + 4, width)
-
-        low_sorted = sorted(entry["low"], key=lambda s: s["charge"])
-        high_sorted = sorted(entry["high"], key=lambda s: s["charge"])
-
-        low_map = {solution["charge"]: solution for solution in low_sorted}
-        high_map = {solution["charge"]: solution for solution in high_sorted}
-        charges = sorted(set(low_map.keys()) | set(high_map.keys())) or [None]
-
-        def _row(value, width, row_idx, column):
-            tk.Label(
-                table,
-                text=value,
-                width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR if value == "—" else TEXT_COLOR,
-                font=MONO_FONT,
-                anchor="w",
-            ).grid(row=row_idx, column=column, sticky="w", pady=(2, 0))
-
-        for row_idx, charge in enumerate(charges, start=2):
-            low = low_map.get(charge)
-            high = high_map.get(charge)
-
-            def fmt(solution, key, width):
-                if not solution:
-                    return "—"
-                if key == "mill":
-                    return f"{solution[key]:.2f}"
-                if key == "eta":
-                    return f"{solution[key]:.1f}"
-                return str(solution[key])
-
-            for col_offset, key, width in (
-                (0, "charge", CH_WIDTH),
-                (1, "mill", MILL_WIDTH),
-                (2, "eta", ETA_WIDTH),
-            ):
-                _row(fmt(low, key, width), width, row_idx, col_offset)
-                _row(fmt(high, key, width), width, row_idx, col_offset + 4)
-
-        if idx < len(filtered_entries) - 1:
-            ttk.Separator(log_body, orient="horizontal").grid(
-                row=idx * 2 + 1, column=0, sticky="ew", pady=4
-            )
-
-
-def log_calculation(
-    log_body: ttk.Frame,
-    log_entries: list,
-    equipment_filter: tk.StringVar,
-    my_alt: float,
-    target_alt: float,
-    distance: float,
-    system: str,
-    low_solutions,
-    high_solutions,
-    sync_layout=None,
-):
-    log_entries.append(
-        {
-            "timestamp": datetime.now(),
-            "my_alt": my_alt,
-            "target_alt": target_alt,
-            "distance": distance,
-            "system": system,
-            "low": low_solutions,
-            "high": high_solutions,
-        }
-    )
-    render_log(log_body, log_entries, equipment_filter.get())
-    if sync_layout:
-        sync_layout()
-
-
 def calculate_and_display(
     system_var,
     low_rows,
@@ -391,57 +220,67 @@ def calculate_and_display(
         sync_layout=sync_layout,
     )
 
+    share_manager.share_results(
+        {
+            "system": system,
+            "distance": distance,
+            "altitude_delta": altitude_delta,
+            "low": low_solutions,
+            "high": high_solutions,
+        }
+    )
+
 
 def apply_styles(root: tk.Tk):
     style = ttk.Style()
     style.theme_use("clam")
 
-    style.configure("TFrame", background=APP_BG)
-    style.configure("Main.TFrame", background=APP_BG)
-    style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
+    style.configure("TFrame", background=ui_theme.APP_BG)
+    style.configure("Main.TFrame", background=ui_theme.APP_BG)
+    style.configure("Card.TFrame", background=ui_theme.CARD_BG, relief="flat", borderwidth=0)
 
-    style.configure("Body.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=BODY_FONT)
-    style.configure("Muted.TLabel", background=APP_BG, foreground=MUTED_COLOR, font=BODY_FONT)
-    style.configure("Title.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=TITLE_FONT)
-    style.configure("CardBody.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=BODY_FONT, anchor="w")
-    style.configure("TableHeader.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=(BODY_FONT[0], 11, "bold"))
-    style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
+    style.configure("Body.TLabel", background=ui_theme.APP_BG, foreground=ui_theme.TEXT_COLOR, font=ui_theme.BODY_FONT)
+    style.configure("Muted.TLabel", background=ui_theme.APP_BG, foreground=ui_theme.MUTED_COLOR, font=ui_theme.BODY_FONT)
+    style.configure("Title.TLabel", background=ui_theme.APP_BG, foreground=ui_theme.TEXT_COLOR, font=ui_theme.TITLE_FONT)
+    style.configure("CardBody.TLabel", background=ui_theme.CARD_BG, foreground=ui_theme.TEXT_COLOR, font=ui_theme.BODY_FONT, anchor="w")
+    style.configure("TableHeader.TLabel", background=ui_theme.CARD_BG, foreground=ui_theme.MUTED_COLOR, font=(ui_theme.BODY_FONT[0], 11, "bold"))
+    style.configure("TableStatus.TLabel", background=ui_theme.CARD_BG, foreground=ui_theme.MUTED_COLOR, font=ui_theme.BODY_FONT)
 
     style.configure(
         "TEntry",
-        fieldbackground=INPUT_BG,
-        background=INPUT_BG,
-        foreground=TEXT_COLOR,
-        bordercolor=INPUT_BORDER,
-        lightcolor=INPUT_BORDER,
-        darkcolor=INPUT_BORDER,
-        insertcolor=TEXT_COLOR,
+        fieldbackground=ui_theme.INPUT_BG,
+        background=ui_theme.INPUT_BG,
+        foreground=ui_theme.TEXT_COLOR,
+        bordercolor=ui_theme.INPUT_BORDER,
+        lightcolor=ui_theme.INPUT_BORDER,
+        darkcolor=ui_theme.INPUT_BORDER,
+        insertcolor=ui_theme.TEXT_COLOR,
         relief="solid",
     )
 
     style.configure(
         "TCombobox",
-        fieldbackground=INPUT_BG,
-        background=INPUT_BG,
-        foreground=TEXT_COLOR,
-        bordercolor=INPUT_BORDER,
-        lightcolor=INPUT_BORDER,
-        darkcolor=INPUT_BORDER,
-        arrowcolor=TEXT_COLOR,
+        fieldbackground=ui_theme.INPUT_BG,
+        background=ui_theme.INPUT_BG,
+        foreground=ui_theme.TEXT_COLOR,
+        bordercolor=ui_theme.INPUT_BORDER,
+        lightcolor=ui_theme.INPUT_BORDER,
+        darkcolor=ui_theme.INPUT_BORDER,
+        arrowcolor=ui_theme.TEXT_COLOR,
     )
     style.map(
         "TCombobox",
-        fieldbackground=[("readonly", INPUT_BG), ("!disabled", INPUT_BG)],
-        foreground=[("readonly", TEXT_COLOR), ("!disabled", TEXT_COLOR)],
-        bordercolor=[("focus", ACCENT_COLOR), ("!focus", INPUT_BORDER)],
-        arrowcolor=[("disabled", MUTED_COLOR), ("!disabled", TEXT_COLOR)],
+        fieldbackground=[("readonly", ui_theme.INPUT_BG), ("!disabled", ui_theme.INPUT_BG)],
+        foreground=[("readonly", ui_theme.TEXT_COLOR), ("!disabled", ui_theme.TEXT_COLOR)],
+        bordercolor=[("focus", ui_theme.ACCENT_COLOR), ("!focus", ui_theme.INPUT_BORDER)],
+        arrowcolor=[("disabled", ui_theme.MUTED_COLOR), ("!disabled", ui_theme.TEXT_COLOR)],
     )
     combobox_popup_options = {
-        "background": INPUT_BG,
-        "foreground": TEXT_COLOR,
-        "selectBackground": ACCENT_COLOR,
+        "background": ui_theme.INPUT_BG,
+        "foreground": ui_theme.TEXT_COLOR,
+        "selectBackground": ui_theme.ACCENT_COLOR,
         "selectForeground": "#ffffff",
-        "borderColor": BORDER_COLOR,
+        "borderColor": ui_theme.BORDER_COLOR,
     }
     for key, value in combobox_popup_options.items():
         root.option_add(f"*TCombobox*Listbox.{key}", value)
@@ -449,30 +288,30 @@ def apply_styles(root: tk.Tk):
 
     style.configure(
         "Primary.TButton",
-        font=(BODY_FONT[0], 12, "bold"),
+        font=(ui_theme.BODY_FONT[0], 12, "bold"),
         foreground="#ffffff",
-        background=ACCENT_COLOR,
+        background=ui_theme.ACCENT_COLOR,
         borderwidth=0,
         padding=(14, 10),
     )
     style.map(
         "Primary.TButton",
-        background=[("active", ACCENT_COLOR), ("pressed", PRIMARY_PRESSED)],
+        background=[("active", ui_theme.ACCENT_COLOR), ("pressed", ui_theme.PRIMARY_PRESSED)],
         foreground=[("disabled", "#d1d1d6")],
     )
 
     style.configure(
         "Secondary.TButton",
-        font=(BODY_FONT[0], 12, "bold"),
-        foreground=ACCENT_COLOR,
-        background=CARD_BG,
+        font=(ui_theme.BODY_FONT[0], 12, "bold"),
+        foreground=ui_theme.ACCENT_COLOR,
+        background=ui_theme.CARD_BG,
         borderwidth=1,
         padding=(14, 10),
         relief="solid",
     )
     style.map(
         "Secondary.TButton",
-        background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
+        background=[("active", ui_theme.SECONDARY_ACTIVE), ("pressed", ui_theme.HOVER_BG)],
         foreground=[("disabled", "#c7c7cc")],
     )
 
@@ -481,26 +320,26 @@ def apply_styles(root: tk.Tk):
         padding=(6, 6),
         relief="solid",
         borderwidth=1,
-        background=CARD_BG,
-        foreground=ACCENT_COLOR,
+        background=ui_theme.CARD_BG,
+        foreground=ui_theme.ACCENT_COLOR,
     )
     style.map(
         "ThemeToggle.TButton",
-        background=[("active", HOVER_BG), ("pressed", PRESSED_BG)],
+        background=[("active", ui_theme.HOVER_BG), ("pressed", ui_theme.PRESSED_BG)],
     )
 
     style.configure(
         "Card.TLabelframe",
-        background=CARD_BG,
+        background=ui_theme.CARD_BG,
         borderwidth=0,
         relief="flat",
         padding=(12, 12, 12, 10),
     )
     style.configure(
         "Card.TLabelframe.Label",
-        background=CARD_BG,
-        foreground=TEXT_COLOR,
-        font=(BODY_FONT[0], 12, "bold"),
+        background=ui_theme.CARD_BG,
+        foreground=ui_theme.TEXT_COLOR,
+        font=(ui_theme.BODY_FONT[0], 12, "bold"),
     )
 
 
@@ -508,15 +347,15 @@ def refresh_solution_rows(rows):
     for row in rows:
         for key in ("ch", "mill", "eta"):
             widget = row[key]
-            widget.configure(bg=CARD_BG)
-            widget.configure(fg=MUTED_COLOR if widget.cget("text") == "—" else TEXT_COLOR)
+            widget.configure(bg=ui_theme.CARD_BG)
+            widget.configure(fg=ui_theme.MUTED_COLOR if widget.cget("text") == "—" else ui_theme.TEXT_COLOR)
 
 
 def configure_log_canvas(canvas: tk.Canvas):
     canvas.configure(
-        bg=CARD_BG,
-        highlightbackground=BORDER_COLOR,
-        highlightcolor=BORDER_COLOR,
+        bg=ui_theme.CARD_BG,
+        highlightbackground=ui_theme.BORDER_COLOR,
+        highlightcolor=ui_theme.BORDER_COLOR,
     )
 
 
@@ -529,9 +368,8 @@ def apply_theme(
     log_entries,
     log_equipment_filter,
 ):
-    set_theme(theme_name)
-    _sync_theme_constants()
-    root.configure(bg=APP_BG)
+    ui_theme.set_theme(theme_name)
+    root.configure(bg=ui_theme.APP_BG)
     apply_styles(root)
 
     for rows in solution_tables:
@@ -540,6 +378,122 @@ def apply_theme(
     configure_log_canvas(log_body.master)
     render_log(log_body, log_entries, log_equipment_filter.get())
 
+
+def open_share_window(root: tk.Tk):
+    if getattr(root, "share_window", None) and root.share_window.winfo_exists():
+        root.share_window.deiconify()
+        root.share_window.lift()
+        return
+
+    window = tk.Toplevel(root)
+    window.title("사격 제원 공유")
+    window.configure(bg=ui_theme.APP_BG)
+    root.share_window = window
+
+    container = ttk.Frame(window, padding=16, style="Main.TFrame")
+    container.grid(row=0, column=0, sticky="nsew")
+    container.columnconfigure(0, weight=1)
+
+    status_var = tk.StringVar(value="공유가 꺼져 있습니다")
+    code_var = tk.StringVar(value="—")
+    payload_var = tk.StringVar(value=describe_shared_payload(None))
+
+    ttk.Label(container, text="사격 제원 공유", style="Title.TLabel").grid(
+        row=0, column=0, sticky="w"
+    )
+    ttk.Label(
+        container,
+        text="계산 버튼을 누를 때마다 현재 방코드로 제원이 공유됩니다.",
+        style="Muted.TLabel",
+    ).grid(row=1, column=0, sticky="w", pady=(2, 10))
+
+    status_row = ttk.Frame(container, style="Main.TFrame")
+    status_row.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+    status_row.columnconfigure(1, weight=1)
+
+    ttk.Label(status_row, text="상태", style="Body.TLabel").grid(
+        row=0, column=0, sticky="w"
+    )
+    ttk.Label(status_row, textvariable=status_var, style="Muted.TLabel").grid(
+        row=0, column=1, sticky="w", padx=(8, 0)
+    )
+
+    code_row = ttk.Frame(container, style="Main.TFrame")
+    code_row.grid(row=3, column=0, sticky="ew", pady=(0, 10))
+    ttk.Label(code_row, text="현재 방코드", style="Body.TLabel").grid(
+        row=0, column=0, sticky="w"
+    )
+    ttk.Label(code_row, textvariable=code_var, style="Title.TLabel").grid(
+        row=0, column=1, sticky="w", padx=(8, 0)
+    )
+
+    controls = ttk.Frame(container, style="Main.TFrame")
+    controls.grid(row=4, column=0, sticky="ew", pady=(0, 12))
+    controls.columnconfigure(1, weight=1)
+
+    join_code = tk.StringVar()
+
+    def _on_create_room():
+        code = share_manager.start_new_room()
+        code_var.set(code)
+        messagebox.showinfo("방코드 생성", f"일회용 방코드가 생성되었습니다:\n{code}")
+
+    def _on_join_room():
+        share_manager.join_room(join_code.get())
+        if share_manager.active_code:
+            code_var.set(share_manager.active_code)
+            messagebox.showinfo("방 입장", f"{share_manager.active_code} 방에 입장했습니다.")
+        else:
+            messagebox.showwarning("방 입장 실패", "유효한 방코드를 입력하세요.")
+
+    ttk.Button(controls, text="새 방코드 생성", style="Secondary.TButton", command=_on_create_room).grid(
+        row=0, column=0, sticky="w", padx=(0, 8)
+    )
+    join_entry = ttk.Entry(controls, textvariable=join_code)
+    join_entry.grid(row=0, column=1, sticky="ew")
+    ttk.Button(controls, text="방 입장", style="Secondary.TButton", command=_on_join_room).grid(
+        row=0, column=2, sticky="w", padx=(8, 0)
+    )
+    ttk.Button(
+        controls,
+        text="제원 공유 중단",
+        style="Secondary.TButton",
+        command=share_manager.stop_sharing,
+    ).grid(row=0, column=3, sticky="w", padx=(8, 0))
+
+    summary = ttk.Frame(container, style="Card.TFrame", padding=12)
+    summary.grid(row=5, column=0, sticky="nsew")
+    summary.columnconfigure(0, weight=1)
+    tk.Label(
+        summary,
+        textvariable=payload_var,
+        bg=ui_theme.CARD_BG,
+        fg=ui_theme.TEXT_COLOR,
+        justify="left",
+        anchor="w",
+        font=ui_theme.MONO_FONT,
+    ).grid(row=0, column=0, sticky="nsew")
+
+    def _refresh(payload, code, mode):
+        if mode == "host":
+            status_var.set("내가 만든 방에서 공유 중")
+        elif mode == "guest":
+            status_var.set("참여 중인 방에서 제원 수신")
+        else:
+            status_var.set("공유가 꺼져 있습니다")
+
+        code_var.set(code if code else "—")
+        payload_var.set(describe_shared_payload(payload))
+
+    listener = share_manager.register_listener(_refresh)
+
+    def _on_close():
+        share_manager.unregister_listener(listener)
+        window.destroy()
+        root.share_window = None
+
+    window.protocol("WM_DELETE_WINDOW", _on_close)
+    window.resizable(False, False)
 
 def build_solution_table(parent):
     table = ttk.Frame(parent, style="Card.TFrame")
@@ -553,33 +507,9 @@ def build_solution_table(parent):
 
     rows = []
     for i in range(3):
-        ch = tk.Label(
-            table,
-            text="—",
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
-            anchor="w",
-            width=CH_WIDTH,
-        )
-        mill = tk.Label(
-            table,
-            text="—",
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
-            anchor="w",
-            width=MILL_WIDTH,
-        )
-        eta = tk.Label(
-            table,
-            text="—",
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
-            anchor="w",
-            width=ETA_WIDTH,
-        )
+        ch = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=4)
+        mill = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=12)
+        eta = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=6)
 
         ch.grid(row=i + 1, column=0, sticky="w", pady=3)
         mill.grid(row=i + 1, column=1, sticky="w", pady=3)
@@ -598,22 +528,25 @@ def build_solution_table(parent):
 def build_gui(profile: DeviceProfile):
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
-    root.configure(bg=APP_BG)
-    root.option_add("*Font", BODY_FONT)
+    root.configure(bg=ui_theme.APP_BG)
+    root.option_add("*Font", ui_theme.BODY_FONT)
     apply_styles(root)
 
-    if profile.base_geometry:
-        root.geometry(profile.base_geometry)
-
-    pad = lambda value: _scale_padding(value, profile=profile)
-
     version_var = tk.StringVar(value=get_version())
+    theme_var = tk.StringVar(value="light")
 
     main = ttk.Frame(root, style="Main.TFrame", padding=pad(20))
     main.grid(row=0, column=0, sticky="nsew")
 
+    menu_bar = MenuBar(main, theme_var=theme_var)
+    menu_bar.grid(row=0, column=0, sticky="w", pady=(0, 8))
+    if menu_bar.light_icon_base is None or menu_bar.dark_icon_base is None:
+        messagebox.showerror(
+            "아이콘 로드 오류", "테마 아이콘을 불러오지 못했습니다. 기본 아이콘을 사용합니다.",
+        )
+
     header = ttk.Frame(main, style="Main.TFrame")
-    header.grid(row=0, column=0, sticky="ew", pady=(0, pad(12)))
+    header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
     title = ttk.Label(header, text=f"AFCS {version_var.get()}", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
@@ -636,15 +569,11 @@ def build_gui(profile: DeviceProfile):
         values=equipment_names,
         state="readonly",
         width=8,
-        font=BODY_FONT,
+        font=ui_theme.BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
 
-    input_card = ttk.Frame(
-        main,
-        style="Card.TFrame",
-        padding=(pad(16), pad(16), pad(16), pad(12)),
-    )
+    input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=1, column=0, sticky="ew")
     input_card.columnconfigure(1, weight=1)
 
@@ -667,7 +596,7 @@ def build_gui(profile: DeviceProfile):
     distance_entry.grid(row=2, column=1, sticky="ew", pady=4)
 
     button_row = ttk.Frame(main, style="Main.TFrame")
-    button_row.grid(row=2, column=0, sticky="ew", pady=(pad(12), 0))
+    button_row.grid(row=2, column=0, sticky="ew", pady=(12, 0))
     button_row.columnconfigure(0, weight=1)
 
     calculate_button = ttk.Button(
@@ -678,8 +607,8 @@ def build_gui(profile: DeviceProfile):
     )
     calculate_button.grid(row=0, column=0, sticky="ew")
 
-    results_card = ttk.Frame(main, style="Card.TFrame", padding=pad(16))
-    results_card.grid(row=3, column=0, sticky="ew", pady=(pad(16), 0))
+    results_card = ttk.Frame(main, style="Card.TFrame", padding=16)
+    results_card.grid(row=3, column=0, sticky="ew", pady=(16, 0))
     results_card.columnconfigure(0, weight=1)
     results_card.columnconfigure(1, weight=1)
 
@@ -695,12 +624,12 @@ def build_gui(profile: DeviceProfile):
     high_rows, high_status = build_solution_table(high_frame)
 
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
-    delta_label.grid(row=4, column=0, sticky="w", pady=(pad(10), 0))
+    delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
 
     theme_var = tk.StringVar(value="light")
 
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
-    bottom_bar.grid(row=5, column=0, sticky="ew", pady=(pad(8), 0))
+    bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
     bottom_bar.columnconfigure(0, weight=1)
 
     try:
@@ -717,7 +646,7 @@ def build_gui(profile: DeviceProfile):
         image=root.light_icon_base if root.light_icon_base else None,
         cursor="hand2",
     )
-    theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, pad(8)))
+    theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
 
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
     log_toggle_button.grid(row=0, column=2, sticky="e")
@@ -754,7 +683,7 @@ def build_gui(profile: DeviceProfile):
         values=["전체", *equipment_names],
         state="readonly",
         width=8,
-        font=BODY_FONT,
+        font=ui_theme.BODY_FONT,
     )
     equipment_select.grid(row=0, column=1, sticky="e")
     log_canvas = tk.Canvas(
@@ -870,13 +799,14 @@ def build_gui(profile: DeviceProfile):
         log_visible["value"] = not log_visible["value"]
         if log_visible["value"]:
             log_frame.grid()
-            log_toggle_button.configure(text="기록 닫기")
         else:
             log_frame.grid_remove()
-            log_toggle_button.configure(text="기록")
+        menu_bar.set_log_active(log_visible["value"])
         _sync_layout()
 
-    log_toggle_button.configure(command=toggle_log)
+    menu_bar.log_button.configure(command=toggle_log)
+
+    menu_bar.share_button.configure(command=lambda: open_share_window(root))
 
     def toggle_theme():
         new_theme = "dark" if theme_var.get() == "light" else "light"
@@ -890,22 +820,14 @@ def build_gui(profile: DeviceProfile):
             log_equipment_filter=log_equipment_filter,
         )
 
-        _apply_toggle_icon(new_theme)
+        menu_bar.apply_theme_icon(new_theme)
 
-    theme_toggle.configure(command=toggle_theme)
-
-    def _apply_toggle_icon(mode: str):
-        if mode == "light":
-            img = root.light_icon_base if root.light_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌞")
-        else:
-            img = root.dark_icon_base if root.dark_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌙")
+    menu_bar.theme_toggle.configure(command=toggle_theme)
 
     _sync_layout()
     root.rowconfigure(0, weight=1)
     main.columnconfigure(0, weight=1)
-    main.rowconfigure(3, weight=1)
+    main.rowconfigure(4, weight=1)
 
     calculate_button.configure(
         command=lambda: calculate_and_display(
@@ -940,16 +862,8 @@ def resource_path(relative_path):
 
 
 def main():
-    profile = resolve_device_profile()
-    global ACTIVE_PROFILE
-    if profile.name != ACTIVE_PROFILE.name:
-        ACTIVE_PROFILE = profile
-        apply_device_profile(profile)
-        set_theme("light")
-        _sync_theme_constants()
-
     ensure_dpi_awareness()
-    root = build_gui(profile)
+    root = build_gui()
     
     # tkinter 윈도우 아이콘 설정
     try:
