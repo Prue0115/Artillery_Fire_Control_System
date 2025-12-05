@@ -7,10 +7,12 @@ import tempfile
 import threading
 import time
 import webbrowser
+from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 import afcs.ui_theme as ui_theme
+from afcs.share import describe_shared_payload, share_manager
 from afcs.device_profile import DeviceProfile, resolve_device_profile
 from afcs.equipment import EquipmentRegistry
 from afcs.log_view import log_calculation, render_log
@@ -18,14 +20,27 @@ from afcs.menu_bar import MenuBar
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui_theme import (
     BODY_FONT,
+    BORDER_COLOR,
     CH_WIDTH,
     ETA_WIDTH,
+    INPUT_BG,
+    INPUT_BORDER,
     ICONS_DIR,
+    ACCENT_COLOR,
+    APP_BG,
+    CARD_BG,
+    HOVER_BG,
+    MUTED_COLOR,
     MILL_WIDTH,
     MONO_FONT,
+    PRESSED_BG,
+    PRIMARY_PRESSED,
+    SECONDARY_ACTIVE,
     THEMES,
     TITLE_FONT,
+    TEXT_COLOR,
     ensure_dpi_awareness,
+    set_theme,
 )
 from afcs.versioning import (
     DEFAULT_GITHUB_REPO,
@@ -34,6 +49,14 @@ from afcs.versioning import (
     normalize_version_string,
     update_version,
 )
+
+
+ACTIVE_PROFILE: DeviceProfile | None = None
+
+
+def pad(pixels: int) -> int:
+    scale = ACTIVE_PROFILE.padding_scale if ACTIVE_PROFILE else 1.0
+    return int(round(pixels * scale))
 
 
 ui_theme.set_theme("light")
@@ -367,7 +390,7 @@ def calculate_and_display(
     log_equipment_filter,
     log_body,
     sync_layout=None,
-    share_manager: ShareManager | None = None,
+    share_manager=None,
 ):
     try:
         my_alt = float(my_altitude_entry.get())
@@ -447,6 +470,17 @@ def calculate_and_display(
         high_solutions,
         sync_layout=sync_layout,
     )
+
+    if share_manager:
+        share_manager.share_results(
+            {
+                "system": system,
+                "distance": distance,
+                "altitude_delta": altitude_delta,
+                "low": low_solutions,
+                "high": high_solutions,
+            }
+        )
 
 
 def apply_styles(root: tk.Tk):
@@ -587,7 +621,6 @@ def apply_theme(
     log_equipment_filter,
 ):
     set_theme(theme_name)
-    _sync_theme_constants()
     root.configure(bg=APP_BG)
     apply_styles(root)
 
@@ -714,6 +747,37 @@ def open_share_window(root: tk.Tk):
     window.protocol("WM_DELETE_WINDOW", _on_close)
     window.resizable(False, False)
 
+
+def setup_share_feature(
+    root: tk.Tk,
+    equipment_names,
+    system_var,
+    my_altitude_entry,
+    target_altitude_entry,
+    distance_entry,
+    low_rows,
+    low_status,
+    high_rows,
+    high_status,
+    delta_label,
+    share_button,
+):
+    share_manager.attach_root(root)
+    status_var = tk.StringVar(value="공유가 꺼져 있습니다")
+
+    def _update_status(payload, code, mode):
+        if mode == "host":
+            status_var.set(f"{code} 방에서 제원 공유 중")
+        elif mode == "guest":
+            status_var.set(f"{code} 방 수신 중")
+        else:
+            status_var.set("공유가 꺼져 있습니다")
+
+    share_manager.register_listener(_update_status)
+    share_button.configure(command=lambda: open_share_window(root))
+
+    return share_manager, status_var
+
 def build_solution_table(parent):
     table = ttk.Frame(parent, style="Card.TFrame")
     table.columnconfigure(0, weight=1)
@@ -744,7 +808,10 @@ def build_solution_table(parent):
     return rows, status
 
 
-def build_gui(profile: DeviceProfile):
+def build_gui(profile: DeviceProfile | None = None):
+    global ACTIVE_PROFILE
+    profile = profile or resolve_device_profile()
+    ACTIVE_PROFILE = profile
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
     root.configure(bg=APP_BG)
@@ -1103,7 +1170,7 @@ def build_gui(profile: DeviceProfile):
     )
 
     def _on_close():
-        share_manager.stop()
+        share_manager.stop_sharing()
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", _on_close)
