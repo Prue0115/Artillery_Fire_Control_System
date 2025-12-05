@@ -6,7 +6,7 @@ from bisect import bisect_left
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import List, Optional, Sequence
 
 from afcs.equipment import Equipment
 
@@ -33,19 +33,24 @@ class RangeTable:
 
     @staticmethod
     @lru_cache(maxsize=64)
-    def _read_rows(path: Path) -> Iterable[RangeRow]:
+    def _read_rows(path: Path) -> tuple[RangeRow, ...]:
+        rows: list[RangeRow] = []
         with path.open("r", encoding="utf-8") as f:
             reader = csv.DictReader(f, skipinitialspace=True)
             for row in reader:
                 try:
-                    yield RangeRow(
-                        range=float(row.get("range", "")),
-                        mill=float(row.get("mill", "")),
-                        diff100m=float(row.get("diff100m", "")),
-                        eta=float(row.get("eta", "")),
+                    rows.append(
+                        RangeRow(
+                            range=float(row.get("range", "")),
+                            mill=float(row.get("mill", "")),
+                            diff100m=float(row.get("diff100m", "")),
+                            eta=float(row.get("eta", "")),
+                        )
                     )
                 except (ValueError, TypeError):
                     continue
+
+        return tuple(rows)
 
     def supports_range(self, distance: float) -> bool:
         if not self.rows:

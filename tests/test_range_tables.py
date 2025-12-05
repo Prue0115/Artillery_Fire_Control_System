@@ -2,6 +2,7 @@ import csv
 from pathlib import Path
 
 from afcs.range_tables import RangeTable
+from afcs.equipment.m109a6 import EQUIPMENT as M109A6
 
 
 def test_read_rows_trims_whitespace(tmp_path: Path):
@@ -18,3 +19,14 @@ def test_read_rows_trims_whitespace(tmp_path: Path):
     assert rows[0].mill == 1200
     assert rows[0].diff100m == 3
     assert rows[0].eta == 40.5
+
+
+def test_range_rows_cache_not_exhausted():
+    table_first = RangeTable(M109A6, "low", 1)
+
+    assert table_first.rows
+
+    table_second = RangeTable(M109A6, "low", 1)
+
+    assert table_second.rows
+    assert table_second.rows == table_first.rows
