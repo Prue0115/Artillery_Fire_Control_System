@@ -862,7 +862,7 @@ def build_gui(profile: DeviceProfile | None = None):
         )
 
     header = ttk.Frame(main, style="Main.TFrame")
-    header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+    header.grid(row=1, column=0, sticky="ew", pady=(0, 12))
     header.columnconfigure(0, weight=1)
     title = ttk.Label(header, text=f"AFCS {version_var.get()}", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
@@ -888,12 +888,6 @@ def build_gui(profile: DeviceProfile | None = None):
         font=ui_theme.BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
-
-    menu_bar = ttk.Frame(main, style="Main.TFrame")
-    menu_bar.grid(row=1, column=0, sticky="ew", pady=(0, 12))
-    for idx in range(3):
-        menu_bar.columnconfigure(idx, weight=0)
-    menu_bar.columnconfigure(3, weight=1)
 
     input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
     input_card.grid(row=2, column=0, sticky="ew")
@@ -948,30 +942,11 @@ def build_gui(profile: DeviceProfile | None = None):
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
     delta_label.grid(row=5, column=0, sticky="w", pady=(10, 0))
 
-    theme_var = tk.StringVar(value="light")
+    theme_toggle = menu_bar.theme_toggle
+    theme_toggle.configure(padding=(10, 6))
 
-    try:
-        root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
-        root.dark_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
-    except Exception as e:
-        messagebox.showerror("아이콘 로드 오류", f"테마 아이콘을 불러오지 못했습니다.\n{e}")
-        root.light_icon_base = root.dark_icon_base = None
-
-    theme_toggle = ttk.Button(
-        menu_bar,
-        text="다크 모드",  # 기본 텍스트는 이미지가 없을 때만 노출
-        style="ThemeToggle.TButton",
-        image=root.light_icon_base if root.light_icon_base else None,
-        cursor="hand2",
-        padding=(10, 6),
-    )
-    theme_toggle.grid(row=0, column=1, sticky="w", padx=(6, 6))
-
-    log_toggle_button = ttk.Button(menu_bar, text="기록", style="Secondary.TButton")
-    log_toggle_button.grid(row=0, column=0, sticky="w")
-
-    share_button = ttk.Button(menu_bar, text="사격 제원 공유", style="Primary.TButton")
-    share_button.grid(row=0, column=2, sticky="w")
+    share_button = menu_bar.share_button
+    share_button.configure(style="Primary.TButton")
 
     share_manager, share_status_var = setup_share_feature(
         root,
@@ -1166,14 +1141,6 @@ def build_gui(profile: DeviceProfile | None = None):
         menu_bar.apply_theme_icon(new_theme)
 
     theme_toggle.configure(command=toggle_theme)
-
-    def _apply_toggle_icon(mode: str):
-        if mode == "light":
-            img = root.light_icon_base if root.light_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌞")
-        else:
-            img = root.dark_icon_base if root.dark_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌙")
 
     _sync_layout()
     root.rowconfigure(0, weight=1)
