@@ -30,12 +30,22 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 - 밝은 환경 → 라이트 테마로 시인성 확보
 - 야간 또는 어두운 환경 → 다크 테마로 눈부심 최소화
 
-6) GitHub Releases 기반 업데이트 확인
+6) 데스크톱·모바일 레이아웃 프로필 선택
+`--device-profile` 옵션이나 `AFCS_DEVICE_PROFILE` 환경 변수를 사용해,
+데스크톱/모바일 프로필을 선택할 수 있습니다. 모바일 프로필은 더 큰 폰트와 넓은 여백,
+세로(포트레이트) 레이아웃에 맞춘 로그 배치를 제공합니다. Android 빌드처럼
+모바일 런타임에서 실행될 때는 별도 선택 없이 자동으로 모바일 프로필이 적용되며,
+이 경우 CLI 옵션·환경 변수는 무시됩니다.
+
+7) GitHub Releases 기반 업데이트 확인
 프로그램 실행 시 자동으로 GitHub API를 조회하여 최신 버전이 있는지 확인합니다.
 사용자는 다음을 즉시 알 수 있습니다
 - 최신 릴리스 버전
 - 다운로드 링크
 - 업데이트 필요 여부
+ - 데스크톱(Tkinter)과 모바일(Kivy) 진입점 모두 같은 `afcs/versioning.py`의 버전 문자열을 참조하므로,
+   빌드 타겟을 나눠도 동일한 버전이 표시됩니다. 버전을 올릴 때는 `afcs/versioning.py`의 `INITIAL_VERSION`
+   값을 한 번만 수정하면 PC/모바일 빌드가 모두 같은 값을 읽습니다.
 
 # 🔧 설치 및 사용
 **다운로드 및 설치**
@@ -48,5 +58,21 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 3. My ALT(m) 사수고도, Target ALT(m) 목표의 고도, Distance (m) 사수-목표물 거리 입력을 합니다.
 4. 계산 버튼을 누르면 사격 제원이 즉시 출력됩니다.
 5. 계산 결과는 장비 기준으로 자동 분류되어 기록(Log) 탭에 저장됩니다.
+
+**프로필 선택 실행 예시**
+- 데스크톱(기본): `python main.py`
+- 모바일 프로필 강제 적용(데스크톱 테스트용): `python main.py --device-profile mobile`
+- 환경 변수로 지정(데스크톱 테스트용): `AFCS_DEVICE_PROFILE=mobile python main.py`
+
 <img width="1092" height="612" alt="image" src="https://github.com/user-attachments/assets/36aab6f0-13b2-4e2e-899d-03277b0189f8" />
+
+# 🛠️ PC/모바일 빌드 가이드
+
+모바일(예: Android)에서는 Windows용 EXE를 바로 실행할 수 없습니다. PC용(EXE)과 모바일용(APK)을 나눠 배포하려면 다음 문서를 참고하세요.
+
+- **데스크톱 EXE**: PyInstaller로 패키징하는 방법을 포함.
+- **모바일 APK**: Tkinter는 Android에서 기본 미지원이므로, `afcs` 핵심 로직을 재사용하면서 Kivy/Briefcase 등 모바일 런타임으로 포팅해 APK를 만드는 절차 요약.
+- **Android 빌드 상세**: Buildozer용 예제 엔트리(`mobile/kivy_main.py`)와 `buildozer.spec` 설정 예시는 [`docs/android_build.md`](docs/android_build.md) 참고.
+
+➡️ 자세한 단계는 [`docs/build_targets.md`](docs/build_targets.md)에서 확인하세요.
 

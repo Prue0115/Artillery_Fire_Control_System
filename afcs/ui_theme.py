@@ -45,12 +45,19 @@ PRESSED_BG = ""
 SECONDARY_ACTIVE = ""
 PRIMARY_PRESSED = ""
 
-TITLE_FONT = ("SF Pro Display", 18, "bold")
-BODY_FONT = ("SF Pro Text", 12)
-MONO_FONT = ("SF Mono", 12)
-CH_WIDTH = 4
-MILL_WIDTH = 12
-ETA_WIDTH = 6
+BASE_TITLE_FONT = ("SF Pro Display", 18, "bold")
+BASE_BODY_FONT = ("SF Pro Text", 12)
+BASE_MONO_FONT = ("SF Mono", 12)
+BASE_CH_WIDTH = 4
+BASE_MILL_WIDTH = 12
+BASE_ETA_WIDTH = 6
+
+TITLE_FONT = BASE_TITLE_FONT
+BODY_FONT = BASE_BODY_FONT
+MONO_FONT = BASE_MONO_FONT
+CH_WIDTH = BASE_CH_WIDTH
+MILL_WIDTH = BASE_MILL_WIDTH
+ETA_WIDTH = BASE_ETA_WIDTH
 
 ICONS_DIR = Path(__file__).resolve().parent.parent / "icons"
 
@@ -71,6 +78,27 @@ def set_theme(theme_name: str):
     PRESSED_BG = theme["PRESSED_BG"]
     SECONDARY_ACTIVE = theme["SECONDARY_ACTIVE"]
     PRIMARY_PRESSED = theme["PRIMARY_PRESSED"]
+
+
+def apply_device_profile(profile):
+    """폰트/폭을 디바이스 프로필에 맞춰 스케일링합니다."""
+
+    def _scale_font(font):
+        family, size, *rest = font
+        scaled_size = max(8, int(round(size * profile.font_scale)))
+        return (family, scaled_size, *rest)
+
+    global TITLE_FONT, BODY_FONT, MONO_FONT
+    global CH_WIDTH, MILL_WIDTH, ETA_WIDTH
+
+    TITLE_FONT = _scale_font(BASE_TITLE_FONT)
+    BODY_FONT = _scale_font(BASE_BODY_FONT)
+    MONO_FONT = _scale_font(BASE_MONO_FONT)
+
+    width_scale = 1.1 if getattr(profile, "narrow_layout", False) else 1.0
+    CH_WIDTH = max(3, int(round(BASE_CH_WIDTH * width_scale)))
+    MILL_WIDTH = max(10, int(round(BASE_MILL_WIDTH * width_scale)))
+    ETA_WIDTH = max(5, int(round(BASE_ETA_WIDTH * width_scale)))
 
 
 def ensure_dpi_awareness():

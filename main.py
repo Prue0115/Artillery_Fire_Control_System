@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import threading
@@ -7,6 +8,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 import afcs.ui_theme as ui_theme
+from afcs.device_profile import DeviceProfile, resolve_device_profile
 from afcs.equipment import EquipmentRegistry
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui_theme import (
@@ -30,6 +32,7 @@ from afcs.ui_theme import (
     TEXT_COLOR,
     THEMES,
     TITLE_FONT,
+    apply_device_profile,
     ensure_dpi_awareness,
     set_theme,
 )
@@ -45,6 +48,7 @@ from afcs.versioning import (
 def _sync_theme_constants():
     global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
     global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
+    global TITLE_FONT, BODY_FONT, MONO_FONT, CH_WIDTH, MILL_WIDTH, ETA_WIDTH
     APP_BG = ui_theme.APP_BG
     CARD_BG = ui_theme.CARD_BG
     TEXT_COLOR = ui_theme.TEXT_COLOR
@@ -57,11 +61,23 @@ def _sync_theme_constants():
     PRESSED_BG = ui_theme.PRESSED_BG
     SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
     PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
+    TITLE_FONT = ui_theme.TITLE_FONT
+    BODY_FONT = ui_theme.BODY_FONT
+    MONO_FONT = ui_theme.MONO_FONT
+    CH_WIDTH = ui_theme.CH_WIDTH
+    MILL_WIDTH = ui_theme.MILL_WIDTH
+    ETA_WIDTH = ui_theme.ETA_WIDTH
 
 
+ACTIVE_PROFILE = resolve_device_profile(None)
+apply_device_profile(ACTIVE_PROFILE)
 set_theme("light")
 _sync_theme_constants()
 registry = EquipmentRegistry()
+
+
+def _scale_padding(value: int, *, profile: DeviceProfile) -> int:
+    return int(round(value * profile.padding_scale))
 
 
 def format_solution_list(title: str, solutions):
@@ -538,9 +554,33 @@ def build_solution_table(parent):
 
     rows = []
     for i in range(3):
-        ch = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=4)
-        mill = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=12)
-        eta = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=6)
+        ch = tk.Label(
+            table,
+            text="—",
+            bg=CARD_BG,
+            fg=MUTED_COLOR,
+            font=MONO_FONT,
+            anchor="w",
+            width=CH_WIDTH,
+        )
+        mill = tk.Label(
+            table,
+            text="—",
+            bg=CARD_BG,
+            fg=MUTED_COLOR,
+            font=MONO_FONT,
+            anchor="w",
+            width=MILL_WIDTH,
+        )
+        eta = tk.Label(
+            table,
+            text="—",
+            bg=CARD_BG,
+            fg=MUTED_COLOR,
+            font=MONO_FONT,
+            anchor="w",
+            width=ETA_WIDTH,
+        )
 
         ch.grid(row=i + 1, column=0, sticky="w", pady=3)
         mill.grid(row=i + 1, column=1, sticky="w", pady=3)
@@ -556,20 +596,25 @@ def build_solution_table(parent):
     return rows, status
 
 
-def build_gui():
+def build_gui(profile: DeviceProfile):
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
     root.configure(bg=APP_BG)
     root.option_add("*Font", BODY_FONT)
     apply_styles(root)
 
+    if profile.base_geometry:
+        root.geometry(profile.base_geometry)
+
+    pad = lambda value: _scale_padding(value, profile=profile)
+
     version_var = tk.StringVar(value=get_version())
 
-    main = ttk.Frame(root, style="Main.TFrame", padding=20)
+    main = ttk.Frame(root, style="Main.TFrame", padding=pad(20))
     main.grid(row=0, column=0, sticky="nsew")
 
     header = ttk.Frame(main, style="Main.TFrame")
-    header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+    header.grid(row=0, column=0, sticky="ew", pady=(0, pad(12)))
     header.columnconfigure(0, weight=1)
     title = ttk.Label(header, text=f"AFCS {version_var.get()}", style="Title.TLabel")
     title.grid(row=0, column=0, sticky="w")
@@ -584,7 +629,7 @@ def build_gui():
     default_system = equipment_names[0] if equipment_names else ""
     system_var = tk.StringVar(value=default_system)
     system_picker = ttk.Frame(header, style="Main.TFrame")
-    system_picker.grid(row=0, column=1, rowspan=2, sticky="e", padx=(12, 0))
+    system_picker.grid(row=0, column=1, rowspan=2, sticky="e", padx=(pad(12), 0))
     ttk.Label(system_picker, text="장비", style="Body.TLabel").grid(row=0, column=0, sticky="e")
     system_select = ttk.Combobox(
         system_picker,
@@ -596,7 +641,11 @@ def build_gui():
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
 
-    input_card = ttk.Frame(main, style="Card.TFrame", padding=(16, 16, 16, 12))
+    input_card = ttk.Frame(
+        main,
+        style="Card.TFrame",
+        padding=(pad(16), pad(16), pad(16), pad(12)),
+    )
     input_card.grid(row=1, column=0, sticky="ew")
     input_card.columnconfigure(1, weight=1)
 
@@ -619,7 +668,7 @@ def build_gui():
     distance_entry.grid(row=2, column=1, sticky="ew", pady=4)
 
     button_row = ttk.Frame(main, style="Main.TFrame")
-    button_row.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+    button_row.grid(row=2, column=0, sticky="ew", pady=(pad(12), 0))
     button_row.columnconfigure(0, weight=1)
 
     calculate_button = ttk.Button(
@@ -630,15 +679,15 @@ def build_gui():
     )
     calculate_button.grid(row=0, column=0, sticky="ew")
 
-    results_card = ttk.Frame(main, style="Card.TFrame", padding=16)
-    results_card.grid(row=3, column=0, sticky="ew", pady=(16, 0))
+    results_card = ttk.Frame(main, style="Card.TFrame", padding=pad(16))
+    results_card.grid(row=3, column=0, sticky="ew", pady=(pad(16), 0))
     results_card.columnconfigure(0, weight=1)
     results_card.columnconfigure(1, weight=1)
 
     low_frame = ttk.Labelframe(results_card, text="LOW", style="Card.TLabelframe")
-    low_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+    low_frame.grid(row=0, column=0, sticky="nsew", padx=(0, pad(8)))
     high_frame = ttk.Labelframe(results_card, text="HIGH", style="Card.TLabelframe")
-    high_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+    high_frame.grid(row=0, column=1, sticky="nsew", padx=(pad(8), 0))
     results_card.rowconfigure(0, weight=1)
     results_card.columnconfigure(0, weight=1)
     results_card.columnconfigure(1, weight=1)
@@ -647,12 +696,12 @@ def build_gui():
     high_rows, high_status = build_solution_table(high_frame)
 
     delta_label = ttk.Label(main, text="고도 차이: 계산 필요", style="Muted.TLabel")
-    delta_label.grid(row=4, column=0, sticky="w", pady=(10, 0))
+    delta_label.grid(row=4, column=0, sticky="w", pady=(pad(10), 0))
 
     theme_var = tk.StringVar(value="light")
 
     bottom_bar = ttk.Frame(main, style="Main.TFrame")
-    bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
+    bottom_bar.grid(row=5, column=0, sticky="ew", pady=(pad(8), 0))
     bottom_bar.columnconfigure(0, weight=1)
 
     try:
@@ -669,22 +718,36 @@ def build_gui():
         image=root.light_icon_base if root.light_icon_base else None,
         cursor="hand2",
     )
-    theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
+    theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, pad(8)))
 
     log_toggle_button = ttk.Button(bottom_bar, text="기록", style="Secondary.TButton")
     log_toggle_button.grid(row=0, column=2, sticky="e")
 
-    log_frame = ttk.Labelframe(root, text="기록", style="Card.TLabelframe", padding=14)
-    log_frame.grid(row=0, column=1, sticky="nsew", padx=(0, 12), pady=12)
+    log_frame = ttk.Labelframe(
+        root,
+        text="기록",
+        style="Card.TLabelframe",
+        padding=pad(14),
+    )
+    log_grid = {
+        "row": 0 if not profile.narrow_layout else 1,
+        "column": 1 if not profile.narrow_layout else 0,
+        "sticky": "nsew",
+        "padx": (0, pad(12)) if not profile.narrow_layout else pad(12),
+        "pady": pad(12),
+    }
+    log_frame.grid(**log_grid)
     log_frame.grid_remove()
 
-    log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, 6))
+    log_header = ttk.Frame(log_frame, style="Main.TFrame", padding=(0, 0, 0, pad(6)))
     log_header.grid(row=0, column=0, columnspan=2, sticky="ew")
     log_header.columnconfigure(0, weight=1)
 
     equipment_wrap = ttk.Frame(log_header, style="Card.TFrame")
     equipment_wrap.grid(row=0, column=0, sticky="e")
-    ttk.Label(equipment_wrap, text="장비", style="Muted.TLabel").grid(row=0, column=0, sticky="e", padx=(0, 6))
+    ttk.Label(equipment_wrap, text="장비", style="Muted.TLabel").grid(
+        row=0, column=0, sticky="e", padx=(0, pad(6))
+    )
     log_equipment_filter = tk.StringVar(value="전체")
     equipment_select = ttk.Combobox(
         equipment_wrap,
@@ -697,7 +760,7 @@ def build_gui():
     equipment_select.grid(row=0, column=1, sticky="e")
     log_canvas = tk.Canvas(
         log_frame,
-        height=380,
+        height=int(380 * profile.padding_scale),
         highlightthickness=1,
         borderwidth=0,
     )
@@ -769,6 +832,13 @@ def build_gui():
     log_column_width = {"value": 0}
 
     def _sync_layout():
+        if profile.narrow_layout:
+            root.columnconfigure(0, weight=1)
+            root.columnconfigure(1, weight=0, minsize=0)
+            root.rowconfigure(0, weight=1)
+            root.rowconfigure(1, weight=1 if log_visible["value"] else 0)
+            return
+
         if log_visible["value"]:
             log_frame.update_idletasks()
             root_width = max(root.winfo_width(), root.winfo_reqwidth())
@@ -870,9 +940,28 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="AFCS UI 실행 옵션")
+    parser.add_argument(
+        "--device-profile",
+        choices=["desktop", "mobile"],
+        help="데스크톱/모바일 레이아웃 중 하나를 선택합니다.",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+    profile = resolve_device_profile(args.device_profile)
+    global ACTIVE_PROFILE
+    if profile.name != ACTIVE_PROFILE.name:
+        ACTIVE_PROFILE = profile
+        apply_device_profile(profile)
+        set_theme("light")
+        _sync_theme_constants()
+
     ensure_dpi_awareness()
-    root = build_gui()
+    root = build_gui(profile)
     
     # tkinter 윈도우 아이콘 설정
     try:

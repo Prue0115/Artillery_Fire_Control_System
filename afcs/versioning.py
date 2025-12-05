@@ -35,7 +35,15 @@ def get_version() -> str:
 
 def set_version(version: str):
     """버전 문자열을 정규화해 메모리에 기록한다."""
+    global _current_version
 
+    normalized = normalize_version_string(version)
+    if normalized:
+        _current_version = normalized
+
+
+# 초기화 시 기본 버전 사용
+set_version(INITIAL_VERSION)
 
 def update_version(new_version: str) -> str:
     """버전을 갱신하고 결과 문자열을 반환한다."""
