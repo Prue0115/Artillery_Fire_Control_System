@@ -35,7 +35,7 @@ class RangeTable:
     @lru_cache(maxsize=64)
     def _read_rows(path: Path) -> Iterable[RangeRow]:
         with path.open("r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
+            reader = csv.DictReader(f, skipinitialspace=True)
             for row in reader:
                 try:
                     yield RangeRow(
