@@ -4,7 +4,7 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-import afcs.ui_theme as ui_theme
+from afcs.ui import theme as ui_theme
 from afcs.range_tables import available_charges, find_solutions
 from afcs.ui.log_view import append_log_entry
 

@@ -6,7 +6,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import ttk
 
-import afcs.ui_theme as ui_theme
+from afcs.ui import theme as ui_theme
 
 
 @dataclass

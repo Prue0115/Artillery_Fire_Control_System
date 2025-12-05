@@ -9,11 +9,10 @@ import tkinter as tk
 from dataclasses import dataclass, field
 from tkinter import messagebox, ttk
 
-import afcs.ui_theme as ui_theme
 from afcs.equipment import EquipmentRegistry
 from afcs.ui.log_view import render_log
 from afcs.ui.solutions import build_solution_table, calculate_and_display
-from afcs.ui.theme import apply_styles, apply_theme, configure_log_canvas, ensure_dpi_awareness
+from afcs.ui import theme as ui_theme
 from afcs.versioning import (
     DEFAULT_GITHUB_REPO,
     fetch_latest_release,
@@ -61,7 +60,7 @@ class Header:
 class AFCSApplication:
     def __init__(self):
         ui_theme.set_theme("light")
-        ensure_dpi_awareness()
+        ui_theme.ensure_dpi_awareness()
         self.registry = EquipmentRegistry()
         self.root = tk.Tk()
         self.root.title("AFCS : Artillery Fire Control System")
@@ -79,7 +78,7 @@ class AFCSApplication:
         self.theme_toggle: ttk.Button | None = None
         self.log_toggle_button: ttk.Button | None = None
 
-        apply_styles(self.root)
+        ui_theme.apply_styles(self.root)
         self._build_layout()
         self._apply_toggle_icon(self.theme_var.get())
         self.root.after(500, self._check_latest_release)
@@ -260,7 +259,7 @@ class AFCSApplication:
             highlightthickness=1,
             borderwidth=0,
         )
-        configure_log_canvas(log_canvas)
+        ui_theme.configure_log_canvas(log_canvas)
         log_canvas.grid(row=1, column=0, sticky="nsew")
 
         log_body = ttk.Frame(log_canvas, style="Card.TFrame")
@@ -392,7 +391,7 @@ class AFCSApplication:
             return
         new_theme = "dark" if self.theme_var.get() == "light" else "light"
         self.theme_var.set(new_theme)
-        apply_theme(
+        ui_theme.apply_theme(
             self.root,
             new_theme,
             solution_tables=[self.tables.low_rows, self.tables.high_rows],
