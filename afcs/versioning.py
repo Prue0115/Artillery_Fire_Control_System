@@ -1,6 +1,10 @@
+"""버전 관리 및 최신 릴리스 조회 유틸리티."""
+from __future__ import annotations
+
 import json
 import os
 import re
+from typing import Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -8,7 +12,6 @@ INITIAL_VERSION = "1.25.4"
 DEFAULT_GITHUB_REPO = "prue0115/Artillery_Fire_Control_System"
 
 _current_version = INITIAL_VERSION
-
 
 _VERSION_PATTERN = re.compile(r"(\d+(?:\.\d+)+)")
 
@@ -33,18 +36,24 @@ def get_version() -> str:
     return _current_version
 
 
-def set_version(version: str):
+def set_version(version: str) -> str:
     """버전 문자열을 정규화해 메모리에 기록한다."""
+
+    global _current_version
+    normalized = normalize_version_string(version)
+    _current_version = normalized or INITIAL_VERSION
+    return _current_version
 
 
 def update_version(new_version: str) -> str:
     """버전을 갱신하고 결과 문자열을 반환한다."""
 
-    set_version(new_version)
-    return _current_version
+    return set_version(new_version)
 
 
-def fetch_latest_release(repo: str | None = None, timeout: float = 5.0):
+def fetch_latest_release(repo: str | None = None, timeout: float = 5.0) -> Optional[dict]:
+    """GitHub에서 최신 릴리스 정보를 조회한다."""
+
     repo_slug = repo or os.environ.get("AFCS_GITHUB_REPO", DEFAULT_GITHUB_REPO)
     if not repo_slug:
         return None
