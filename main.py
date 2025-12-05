@@ -2,37 +2,14 @@ import os
 import sys
 import threading
 import webbrowser
-from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 import afcs.ui_theme as ui_theme
 from afcs.equipment import EquipmentRegistry
-from afcs.range_tables import available_charges, find_solutions
-from afcs.ui_theme import (
-    ACCENT_COLOR,
-    APP_BG,
-    BODY_FONT,
-    CARD_BG,
-    BORDER_COLOR,
-    CH_WIDTH,
-    ETA_WIDTH,
-    HOVER_BG,
-    ICONS_DIR,
-    INPUT_BG,
-    INPUT_BORDER,
-    MILL_WIDTH,
-    MONO_FONT,
-    MUTED_COLOR,
-    PRESSED_BG,
-    PRIMARY_PRESSED,
-    SECONDARY_ACTIVE,
-    TEXT_COLOR,
-    THEMES,
-    TITLE_FONT,
-    ensure_dpi_awareness,
-    set_theme,
-)
+from afcs.ui.log_view import render_log
+from afcs.ui.solutions import build_solution_table, calculate_and_display
+from afcs.ui.theme import apply_styles, apply_theme, configure_log_canvas, ensure_dpi_awareness
 from afcs.versioning import (
     DEFAULT_GITHUB_REPO,
     fetch_latest_release,
@@ -41,58 +18,8 @@ from afcs.versioning import (
     update_version,
 )
 
-
-def _sync_theme_constants():
-    global APP_BG, CARD_BG, TEXT_COLOR, MUTED_COLOR, ACCENT_COLOR, BORDER_COLOR
-    global INPUT_BG, INPUT_BORDER, HOVER_BG, PRESSED_BG, SECONDARY_ACTIVE, PRIMARY_PRESSED
-    APP_BG = ui_theme.APP_BG
-    CARD_BG = ui_theme.CARD_BG
-    TEXT_COLOR = ui_theme.TEXT_COLOR
-    MUTED_COLOR = ui_theme.MUTED_COLOR
-    ACCENT_COLOR = ui_theme.ACCENT_COLOR
-    BORDER_COLOR = ui_theme.BORDER_COLOR
-    INPUT_BG = ui_theme.INPUT_BG
-    INPUT_BORDER = ui_theme.INPUT_BORDER
-    HOVER_BG = ui_theme.HOVER_BG
-    PRESSED_BG = ui_theme.PRESSED_BG
-    SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
-    PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
-
-
-set_theme("light")
-_sync_theme_constants()
+ui_theme.set_theme("light")
 registry = EquipmentRegistry()
-
-
-def format_solution_list(title: str, solutions):
-    if not solutions:
-        return f"{title}: 지원 범위 밖입니다"
-
-    header = f"{'CH':>2} | {'MILL':>10} | {'ETA':>5}"
-    lines = [f"{title}:", header]
-    for solution in solutions:
-        lines.append(f"{solution['charge']:>2} | {solution['mill']:>10.2f} | {solution['eta']:>5.1f}")
-    return "\n".join(lines)
-
-
-def update_solution_table(rows, status_label, solutions, message: str | None = None):
-    if message:
-        status_label.config(text=message)
-    elif not solutions:
-        status_label.config(text="지원 범위 밖입니다")
-    else:
-        status_label.config(text="")
-
-    for idx, row in enumerate(rows):
-        if idx < len(solutions):
-            solution = solutions[idx]
-            row["ch"].config(text=f"{solution['charge']}", fg=TEXT_COLOR)
-            row["mill"].config(text=f"{solution['mill']:.2f}", fg=TEXT_COLOR)
-            row["eta"].config(text=f"{solution['eta']:.1f}", fg=TEXT_COLOR)
-        else:
-            row["ch"].config(text="—", fg=MUTED_COLOR)
-            row["mill"].config(text="—", fg=MUTED_COLOR)
-            row["eta"].config(text="—", fg=MUTED_COLOR)
 
 
 def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: ttk.Label):
@@ -124,443 +51,13 @@ def check_latest_release(root: tk.Tk, version_var: tk.StringVar, title_label: tt
             root.after(0, lambda: _prompt_update(release))
 
     threading.Thread(target=_worker, daemon=True).start()
-def render_log(log_body: ttk.Frame, entries, equipment_filter: str):
-    for child in log_body.winfo_children():
-        child.destroy()
-
-    filtered_entries = sorted(entries, key=lambda e: e["timestamp"], reverse=True)
-    if equipment_filter and equipment_filter != "전체":
-        filtered_entries = [
-            e for e in filtered_entries if e["system"] == equipment_filter
-        ]
-
-    if not filtered_entries:
-        tk.Label(
-            log_body,
-            text="선택한 조건에 맞는 기록이 없습니다.",
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
-            anchor="w",
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=8)
-        return
-
-    for idx, entry in enumerate(filtered_entries):
-        card = ttk.Frame(log_body, style="Card.TFrame")
-        card.grid(row=idx * 2, column=0, sticky="ew", padx=0, pady=(0, 6))
-        card.columnconfigure(0, weight=1)
-
-        tk.Label(
-            card,
-            text=f"시간 {entry['timestamp'].strftime('%H:%M')} · 장비 {entry['system']}",
-            bg=CARD_BG,
-            fg=ACCENT_COLOR,
-            font=(MONO_FONT[0], 12, "bold"),
-            anchor="w",
-        ).grid(row=0, column=0, sticky="w", padx=12, pady=(8, 2))
-
-        tk.Label(
-            card,
-            text=(
-                f"My ALT {entry['my_alt']:>5g}m  |  "
-                f"Target ALT {entry['target_alt']:>5g}m  |  "
-                f"Distance {entry['distance']:>6g}m"
-            ),
-            bg=CARD_BG,
-            fg=MUTED_COLOR,
-            font=MONO_FONT,
-            anchor="w",
-        ).grid(row=1, column=0, sticky="w", padx=12, pady=(0, 8))
-
-        table = ttk.Frame(card, style="Card.TFrame")
-        table.grid(row=2, column=0, sticky="ew", padx=12, pady=(0, 10))
-        for col in range(7):
-            weight = 0 if col == 3 else 1
-            table.grid_columnconfigure(col, weight=weight, minsize=0)
-        table.grid_columnconfigure(3, minsize=16)
-
-        def _header(text, column, columnspan=1):
-            tk.Label(
-                table,
-                text=text,
-                bg=CARD_BG,
-                fg=TEXT_COLOR,
-                font=(MONO_FONT[0], 11, "bold"),
-                anchor="w",
-            ).grid(row=0, column=column, columnspan=columnspan, sticky="w")
-
-        _header("LOW", 0, 3)
-        _header("HIGH", 4, 3)
-
-        def _column_header(label_text, column, width):
-            tk.Label(
-                table,
-                text=label_text,
-                width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR,
-                font=(MONO_FONT[0], 10, "bold"),
-                anchor="w",
-            ).grid(row=1, column=column, sticky="w")
-
-        for idx_col, (label_text, width) in enumerate(
-            (("CH", CH_WIDTH), ("MILL", MILL_WIDTH), ("ETA", ETA_WIDTH))
-        ):
-            _column_header(label_text, idx_col, width)
-            _column_header(label_text, idx_col + 4, width)
-
-        low_sorted = sorted(entry["low"], key=lambda s: s["charge"])
-        high_sorted = sorted(entry["high"], key=lambda s: s["charge"])
-
-        low_map = {solution["charge"]: solution for solution in low_sorted}
-        high_map = {solution["charge"]: solution for solution in high_sorted}
-        charges = sorted(set(low_map.keys()) | set(high_map.keys())) or [None]
-
-        def _row(value, width, row_idx, column):
-            tk.Label(
-                table,
-                text=value,
-                width=width,
-                bg=CARD_BG,
-                fg=MUTED_COLOR if value == "—" else TEXT_COLOR,
-                font=MONO_FONT,
-                anchor="w",
-            ).grid(row=row_idx, column=column, sticky="w", pady=(2, 0))
-
-        for row_idx, charge in enumerate(charges, start=2):
-            low = low_map.get(charge)
-            high = high_map.get(charge)
-
-            def fmt(solution, key, width):
-                if not solution:
-                    return "—"
-                if key == "mill":
-                    return f"{solution[key]:.2f}"
-                if key == "eta":
-                    return f"{solution[key]:.1f}"
-                return str(solution[key])
-
-            for col_offset, key, width in (
-                (0, "charge", CH_WIDTH),
-                (1, "mill", MILL_WIDTH),
-                (2, "eta", ETA_WIDTH),
-            ):
-                _row(fmt(low, key, width), width, row_idx, col_offset)
-                _row(fmt(high, key, width), width, row_idx, col_offset + 4)
-
-        if idx < len(filtered_entries) - 1:
-            ttk.Separator(log_body, orient="horizontal").grid(
-                row=idx * 2 + 1, column=0, sticky="ew", pady=4
-            )
-
-
-def log_calculation(
-    log_body: ttk.Frame,
-    log_entries: list,
-    equipment_filter: tk.StringVar,
-    my_alt: float,
-    target_alt: float,
-    distance: float,
-    system: str,
-    low_solutions,
-    high_solutions,
-    sync_layout=None,
-):
-    log_entries.append(
-        {
-            "timestamp": datetime.now(),
-            "my_alt": my_alt,
-            "target_alt": target_alt,
-            "distance": distance,
-            "system": system,
-            "low": low_solutions,
-            "high": high_solutions,
-        }
-    )
-    render_log(log_body, log_entries, equipment_filter.get())
-    if sync_layout:
-        sync_layout()
-
-
-def calculate_and_display(
-    system_var,
-    low_rows,
-    high_rows,
-    low_status,
-    high_status,
-    delta_label,
-    my_altitude_entry,
-    target_altitude_entry,
-    distance_entry,
-    log_entries,
-    log_equipment_filter,
-    log_body,
-    sync_layout=None,
-):
-    try:
-        my_alt = float(my_altitude_entry.get())
-        target_alt = float(target_altitude_entry.get())
-        distance = float(distance_entry.get())
-    except ValueError:
-        messagebox.showerror("입력 오류", "숫자만 입력하세요.")
-        return
-    
-    altitude_delta = my_alt - target_alt
-    system = system_var.get()
-    equipment = registry.get(system)
-    if equipment is None:
-        messagebox.showerror("장비 오류", f"'{system}' 장비 정보를 찾을 수 없습니다.")
-        return
-
-    equipment_charges = equipment.charges_override
-    low_override = equipment_charges.get("low") if equipment_charges else None
-    high_override = equipment_charges.get("high") if equipment_charges else None
-
-    low_charges = (
-        low_override if low_override is not None else available_charges(equipment, "low")
-    )
-    high_charges = (
-        high_override if high_override is not None else available_charges(equipment, "high")
-    )
-
-    if low_charges:
-        low_solutions = find_solutions(
-            distance,
-            altitude_delta,
-            "low",
-            equipment=equipment,
-            limit=3,
-            charges=low_charges,
-        )
-        low_message = None
-    else:
-        low_solutions = []
-        low_message = (
-            "해당 장비는 저각 사격을 지원하지 않습니다"
-            if low_override == []
-            else "저각 데이터가 없습니다. rangeTables를 확인하세요"
-        )
-
-    if high_charges:
-        high_solutions = find_solutions(
-            distance,
-            altitude_delta,
-            "high",
-            equipment=equipment,
-            limit=3,
-            charges=high_charges,
-        )
-        high_message = None
-    else:
-        high_solutions = []
-        high_message = (
-            "해당 장비는 고각 사격을 지원하지 않습니다"
-            if high_override == []
-            else "고각 데이터가 없습니다. rangeTables를 확인하세요"
-        )
-
-    update_solution_table(low_rows, low_status, low_solutions, message=low_message)
-    update_solution_table(high_rows, high_status, high_solutions, message=high_message)
-    delta_label.config(text=f"고도 차이(사수-목표): {altitude_delta:+.1f} m")
-
-    log_calculation(
-        log_body,
-        log_entries,
-        log_equipment_filter,
-        my_alt,
-        target_alt,
-        distance,
-        system,
-        low_solutions,
-        high_solutions,
-        sync_layout=sync_layout,
-    )
-
-
-def apply_styles(root: tk.Tk):
-    style = ttk.Style()
-    style.theme_use("clam")
-
-    style.configure("TFrame", background=APP_BG)
-    style.configure("Main.TFrame", background=APP_BG)
-    style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
-
-    style.configure("Body.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=BODY_FONT)
-    style.configure("Muted.TLabel", background=APP_BG, foreground=MUTED_COLOR, font=BODY_FONT)
-    style.configure("Title.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=TITLE_FONT)
-    style.configure("CardBody.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=BODY_FONT, anchor="w")
-    style.configure("TableHeader.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=(BODY_FONT[0], 11, "bold"))
-    style.configure("TableStatus.TLabel", background=CARD_BG, foreground=MUTED_COLOR, font=BODY_FONT)
-
-    style.configure(
-        "TEntry",
-        fieldbackground=INPUT_BG,
-        background=INPUT_BG,
-        foreground=TEXT_COLOR,
-        bordercolor=INPUT_BORDER,
-        lightcolor=INPUT_BORDER,
-        darkcolor=INPUT_BORDER,
-        insertcolor=TEXT_COLOR,
-        relief="solid",
-    )
-
-    style.configure(
-        "TCombobox",
-        fieldbackground=INPUT_BG,
-        background=INPUT_BG,
-        foreground=TEXT_COLOR,
-        bordercolor=INPUT_BORDER,
-        lightcolor=INPUT_BORDER,
-        darkcolor=INPUT_BORDER,
-        arrowcolor=TEXT_COLOR,
-    )
-    style.map(
-        "TCombobox",
-        fieldbackground=[("readonly", INPUT_BG), ("!disabled", INPUT_BG)],
-        foreground=[("readonly", TEXT_COLOR), ("!disabled", TEXT_COLOR)],
-        bordercolor=[("focus", ACCENT_COLOR), ("!focus", INPUT_BORDER)],
-        arrowcolor=[("disabled", MUTED_COLOR), ("!disabled", TEXT_COLOR)],
-    )
-    combobox_popup_options = {
-        "background": INPUT_BG,
-        "foreground": TEXT_COLOR,
-        "selectBackground": ACCENT_COLOR,
-        "selectForeground": "#ffffff",
-        "borderColor": BORDER_COLOR,
-    }
-    for key, value in combobox_popup_options.items():
-        root.option_add(f"*TCombobox*Listbox.{key}", value)
-        root.option_add(f"*Combobox*Listbox.{key}", value)
-
-    style.configure(
-        "Primary.TButton",
-        font=(BODY_FONT[0], 12, "bold"),
-        foreground="#ffffff",
-        background=ACCENT_COLOR,
-        borderwidth=0,
-        padding=(14, 10),
-    )
-    style.map(
-        "Primary.TButton",
-        background=[("active", ACCENT_COLOR), ("pressed", PRIMARY_PRESSED)],
-        foreground=[("disabled", "#d1d1d6")],
-    )
-
-    style.configure(
-        "Secondary.TButton",
-        font=(BODY_FONT[0], 12, "bold"),
-        foreground=ACCENT_COLOR,
-        background=CARD_BG,
-        borderwidth=1,
-        padding=(14, 10),
-        relief="solid",
-    )
-    style.map(
-        "Secondary.TButton",
-        background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
-        foreground=[("disabled", "#c7c7cc")],
-    )
-
-    style.configure(
-        "ThemeToggle.TButton",
-        padding=(6, 6),
-        relief="solid",
-        borderwidth=1,
-        background=CARD_BG,
-        foreground=ACCENT_COLOR,
-    )
-    style.map(
-        "ThemeToggle.TButton",
-        background=[("active", HOVER_BG), ("pressed", PRESSED_BG)],
-    )
-
-    style.configure(
-        "Card.TLabelframe",
-        background=CARD_BG,
-        borderwidth=0,
-        relief="flat",
-        padding=(12, 12, 12, 10),
-    )
-    style.configure(
-        "Card.TLabelframe.Label",
-        background=CARD_BG,
-        foreground=TEXT_COLOR,
-        font=(BODY_FONT[0], 12, "bold"),
-    )
-
-
-def refresh_solution_rows(rows):
-    for row in rows:
-        for key in ("ch", "mill", "eta"):
-            widget = row[key]
-            widget.configure(bg=CARD_BG)
-            widget.configure(fg=MUTED_COLOR if widget.cget("text") == "—" else TEXT_COLOR)
-
-
-def configure_log_canvas(canvas: tk.Canvas):
-    canvas.configure(
-        bg=CARD_BG,
-        highlightbackground=BORDER_COLOR,
-        highlightcolor=BORDER_COLOR,
-    )
-
-
-def apply_theme(
-    root: tk.Tk,
-    theme_name: str,
-    *,
-    solution_tables,
-    log_body: ttk.Frame,
-    log_entries,
-    log_equipment_filter,
-):
-    set_theme(theme_name)
-    _sync_theme_constants()
-    root.configure(bg=APP_BG)
-    apply_styles(root)
-
-    for rows in solution_tables:
-        refresh_solution_rows(rows)
-
-    configure_log_canvas(log_body.master)
-    render_log(log_body, log_entries, log_equipment_filter.get())
-
-
-def build_solution_table(parent):
-    table = ttk.Frame(parent, style="Card.TFrame")
-    table.columnconfigure(0, weight=1)
-    table.columnconfigure(1, weight=3)
-    table.columnconfigure(2, weight=2)
-
-    headers = ["CH", "MILL", "ETA"]
-    for col, text in enumerate(headers):
-        ttk.Label(table, text=text, style="TableHeader.TLabel").grid(row=0, column=col, sticky="w", padx=(0, 8))
-
-    rows = []
-    for i in range(3):
-        ch = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=4)
-        mill = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=12)
-        eta = tk.Label(table, text="—", bg=CARD_BG, fg=MUTED_COLOR, font=MONO_FONT, anchor="w", width=6)
-
-        ch.grid(row=i + 1, column=0, sticky="w", pady=3)
-        mill.grid(row=i + 1, column=1, sticky="w", pady=3)
-        eta.grid(row=i + 1, column=2, sticky="w", pady=3)
-
-        rows.append({"ch": ch, "mill": mill, "eta": eta})
-
-    status = ttk.Label(parent, text="계산 결과가 여기에 표시됩니다", style="TableStatus.TLabel")
-    status.grid(row=1, column=0, sticky="w", pady=(8, 0))
-
-    table.grid(row=0, column=0, sticky="nsew")
-    parent.columnconfigure(0, weight=1)
-    return rows, status
 
 
 def build_gui():
     root = tk.Tk()
     root.title("AFCS : Artillery Fire Control System")
-    root.configure(bg=APP_BG)
-    root.option_add("*Font", BODY_FONT)
+    root.configure(bg=ui_theme.APP_BG)
+    root.option_add("*Font", ui_theme.BODY_FONT)
     apply_styles(root)
 
     version_var = tk.StringVar(value=get_version())
@@ -592,7 +89,7 @@ def build_gui():
         values=equipment_names,
         state="readonly",
         width=8,
-        font=BODY_FONT,
+        font=ui_theme.BODY_FONT,
     )
     system_select.grid(row=0, column=1, sticky="w", padx=(6, 0))
 
@@ -656,8 +153,8 @@ def build_gui():
     bottom_bar.columnconfigure(0, weight=1)
 
     try:
-        root.light_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Light Mode.png"))
-        root.dark_icon_base = tk.PhotoImage(file=str(ICONS_DIR / "Dark Mode.png"))
+        root.light_icon_base = tk.PhotoImage(file=str(ui_theme.ICONS_DIR / "Light Mode.png"))
+        root.dark_icon_base = tk.PhotoImage(file=str(ui_theme.ICONS_DIR / "Dark Mode.png"))
     except Exception as e:
         messagebox.showerror("아이콘 로드 오류", f"테마 아이콘을 불러오지 못했습니다.\n{e}")
         root.light_icon_base = root.dark_icon_base = None
@@ -692,7 +189,7 @@ def build_gui():
         values=["전체", *equipment_names],
         state="readonly",
         width=8,
-        font=BODY_FONT,
+        font=ui_theme.BODY_FONT,
     )
     equipment_select.grid(row=0, column=1, sticky="e")
     log_canvas = tk.Canvas(
@@ -809,6 +306,14 @@ def build_gui():
 
     log_toggle_button.configure(command=toggle_log)
 
+    def _apply_toggle_icon(mode: str):
+        if mode == "light":
+            img = root.light_icon_base if root.light_icon_base else None
+            theme_toggle.configure(image=img, text="" if img else "🌞")
+        else:
+            img = root.dark_icon_base if root.dark_icon_base else None
+            theme_toggle.configure(image=img, text="" if img else "🌙")
+
     def toggle_theme():
         new_theme = "dark" if theme_var.get() == "light" else "light"
         theme_var.set(new_theme)
@@ -825,21 +330,9 @@ def build_gui():
 
     theme_toggle.configure(command=toggle_theme)
 
-    def _apply_toggle_icon(mode: str):
-        if mode == "light":
-            img = root.light_icon_base if root.light_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌞")
-        else:
-            img = root.dark_icon_base if root.dark_icon_base else None
-            theme_toggle.configure(image=img, text="" if img else "🌙")
-
-    _sync_layout()
-    root.rowconfigure(0, weight=1)
-    main.columnconfigure(0, weight=1)
-    main.rowconfigure(3, weight=1)
-
     calculate_button.configure(
         command=lambda: calculate_and_display(
+            registry,
             system_var,
             low_rows,
             high_rows,
@@ -858,6 +351,12 @@ def build_gui():
 
     root.after(500, lambda: check_latest_release(root, version_var, title))
 
+    root.rowconfigure(0, weight=1)
+    main.columnconfigure(0, weight=1)
+    main.rowconfigure(3, weight=1)
+
+    _apply_toggle_icon(theme_var.get())
+
     return root
 
 
@@ -873,14 +372,13 @@ def resource_path(relative_path):
 def main():
     ensure_dpi_awareness()
     root = build_gui()
-    
-    # tkinter 윈도우 아이콘 설정
+
     try:
         icon_path = resource_path('icons/afcs.ico')
         root.iconbitmap(icon_path)
     except Exception as e:
         print(f"아이콘 로드 실패: {e}")
-    
+
     root.mainloop()
 
 
