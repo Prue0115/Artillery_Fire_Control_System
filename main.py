@@ -59,7 +59,36 @@ def pad(pixels: int) -> int:
     return int(round(pixels * scale))
 
 
+def _sync_theme_constants():
+    global BODY_FONT, BORDER_COLOR, CH_WIDTH, ETA_WIDTH, INPUT_BG, INPUT_BORDER
+    global ICONS_DIR, ACCENT_COLOR, APP_BG, CARD_BG, HOVER_BG, MUTED_COLOR
+    global MILL_WIDTH, MONO_FONT, PRESSED_BG, PRIMARY_PRESSED, SECONDARY_ACTIVE
+    global THEMES, TITLE_FONT, TEXT_COLOR
+
+    BODY_FONT = ui_theme.BODY_FONT
+    BORDER_COLOR = ui_theme.BORDER_COLOR
+    CH_WIDTH = ui_theme.CH_WIDTH
+    ETA_WIDTH = ui_theme.ETA_WIDTH
+    INPUT_BG = ui_theme.INPUT_BG
+    INPUT_BORDER = ui_theme.INPUT_BORDER
+    ICONS_DIR = ui_theme.ICONS_DIR
+    ACCENT_COLOR = ui_theme.ACCENT_COLOR
+    APP_BG = ui_theme.APP_BG
+    CARD_BG = ui_theme.CARD_BG
+    HOVER_BG = ui_theme.HOVER_BG
+    MUTED_COLOR = ui_theme.MUTED_COLOR
+    MILL_WIDTH = ui_theme.MILL_WIDTH
+    MONO_FONT = ui_theme.MONO_FONT
+    PRESSED_BG = ui_theme.PRESSED_BG
+    PRIMARY_PRESSED = ui_theme.PRIMARY_PRESSED
+    SECONDARY_ACTIVE = ui_theme.SECONDARY_ACTIVE
+    THEMES = ui_theme.THEMES
+    TITLE_FONT = ui_theme.TITLE_FONT
+    TEXT_COLOR = ui_theme.TEXT_COLOR
+
+
 ui_theme.set_theme("light")
+_sync_theme_constants()
 registry = EquipmentRegistry()
 
 
@@ -621,6 +650,7 @@ def apply_theme(
     log_equipment_filter,
 ):
     set_theme(theme_name)
+    _sync_theme_constants()
     root.configure(bg=APP_BG)
     apply_styles(root)
 
