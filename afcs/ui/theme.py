@@ -114,11 +114,23 @@ def apply_styles(root: tk.Tk) -> None:
     style.configure("TFrame", background=APP_BG)
     style.configure("Main.TFrame", background=APP_BG)
     style.configure("Sidebar.TFrame", background=APP_BG)
+    style.configure(
+        "SidebarPanel.TFrame",
+        background=CARD_BG,
+        borderwidth=1,
+        relief="solid",
+    )
     style.configure("Card.TFrame", background=CARD_BG, relief="flat", borderwidth=0)
 
     style.configure("Body.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=BODY_FONT)
     style.configure("Muted.TLabel", background=APP_BG, foreground=MUTED_COLOR, font=BODY_FONT)
     style.configure("Title.TLabel", background=APP_BG, foreground=TEXT_COLOR, font=TITLE_FONT)
+    style.configure(
+        "SidebarTitle.TLabel",
+        background=CARD_BG,
+        foreground=TEXT_COLOR,
+        font=(BODY_FONT[0], 14, "bold"),
+    )
     style.configure("CardBody.TLabel", background=CARD_BG, foreground=TEXT_COLOR, font=BODY_FONT, anchor="w")
     style.configure(
         "TableHeader.TLabel",
@@ -211,6 +223,37 @@ def apply_styles(root: tk.Tk) -> None:
         "Sidebar.TButton",
         background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
         foreground=[("disabled", MUTED_COLOR)],
+    )
+
+    style.configure(
+        "SidebarPanel.TButton",
+        font=(BODY_FONT[0], 12, "bold"),
+        foreground=TEXT_COLOR,
+        background=CARD_BG,
+        borderwidth=1,
+        padding=(12, 10),
+        relief="solid",
+        anchor="w",
+    )
+    style.map(
+        "SidebarPanel.TButton",
+        background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
+        foreground=[("disabled", MUTED_COLOR)],
+    )
+
+    style.configure(
+        "SidebarClose.TButton",
+        font=(BODY_FONT[0], 11, "bold"),
+        foreground=MUTED_COLOR,
+        background=CARD_BG,
+        borderwidth=1,
+        padding=(6, 4),
+        relief="solid",
+    )
+    style.map(
+        "SidebarClose.TButton",
+        background=[("active", SECONDARY_ACTIVE), ("pressed", HOVER_BG)],
+        foreground=[("active", TEXT_COLOR), ("pressed", TEXT_COLOR)],
     )
 
     style.configure(

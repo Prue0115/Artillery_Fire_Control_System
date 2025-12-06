@@ -6,6 +6,7 @@ import sys
 import threading
 import webbrowser
 import tkinter as tk
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from tkinter import messagebox, ttk
@@ -79,9 +80,11 @@ class AFCSApplication:
         self.theme_toggle: ttk.Button | None = None
         self.log_toggle_button: ttk.Button | None = None
         self.menu_button: ttk.Button | None = None
+        self.sidebar_panel: ttk.Frame | None = None
 
         ui_theme.apply_styles(self.root)
         self._build_layout()
+        self.sidebar_panel = self._build_sidebar_panel()
         self._apply_toggle_icon(self.theme_var.get())
         self.root.after(500, self._check_latest_release)
 
@@ -121,7 +124,7 @@ class AFCSApplication:
             text="☰",
             width=3,
             style="Sidebar.TButton",
-            command=self._open_sidebar_menu,
+            command=self._toggle_sidebar_panel,
             cursor="hand2",
         )
         self.menu_button.grid(row=0, column=0, sticky="nw", pady=(0, 12))
@@ -426,35 +429,19 @@ class AFCSApplication:
 
         self._apply_toggle_icon(new_theme)
 
-    def _open_sidebar_menu(self):
-        if not self.menu_button:
+    def _toggle_sidebar_panel(self):
+        if not self.sidebar_panel:
             return
 
-        menu = tk.Menu(
-            self.root,
-            tearoff=0,
-            background=ui_theme.CARD_BG,
-            foreground=ui_theme.TEXT_COLOR,
-            activebackground=ui_theme.HOVER_BG,
-            activeforeground=ui_theme.TEXT_COLOR,
-            borderwidth=1,
-            relief="solid",
-        )
-        menu.add_command(label="테마 전환", command=self._toggle_theme)
-        menu.add_command(
-            label="기록 창 토글", command=self._toggle_log if self.log_panel else None
-        )
-        menu.add_separator()
-        menu.add_command(label="업데이트 확인", command=self._check_latest_release)
-        menu.add_command(label="입력 초기화", command=self._reset_inputs)
-        menu.add_command(label="GitHub 열기", command=self._open_github)
+        if self.sidebar_panel.winfo_ismapped():
+            self.sidebar_panel.place_forget()
+            return
 
-        x = self.menu_button.winfo_rootx()
-        y = self.menu_button.winfo_rooty() + self.menu_button.winfo_height()
-        try:
-            menu.tk_popup(x, y)
-        finally:
-            menu.grab_release()
+        self.sidebar_panel.update_idletasks()
+        width = max(self.sidebar_panel.winfo_reqwidth(), 220)
+        self.sidebar_panel.configure(width=width)
+        self.sidebar_panel.place(x=0, y=0, relheight=1)
+        self.sidebar_panel.lift()
 
     def _reset_inputs(self):
         if not self.inputs:
@@ -471,6 +458,52 @@ class AFCSApplication:
         repo_slug = os.environ.get("AFCS_GITHUB_REPO", DEFAULT_GITHUB_REPO)
         if repo_slug:
             webbrowser.open(f"https://github.com/{repo_slug}", new=1)
+
+    def _build_sidebar_panel(self) -> ttk.Frame:
+        panel = ttk.Frame(self.root, style="SidebarPanel.TFrame", padding=(16, 16, 18, 18))
+        panel.columnconfigure(0, weight=1)
+
+        header = ttk.Frame(panel, style="SidebarPanel.TFrame")
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        header.columnconfigure(0, weight=1)
+
+        ttk.Label(header, text="빠른 메뉴", style="SidebarTitle.TLabel").grid(
+            row=0, column=0, sticky="w"
+        )
+        close_btn = ttk.Button(
+            header,
+            text="✕",
+            width=3,
+            style="SidebarClose.TButton",
+            command=self._toggle_sidebar_panel,
+            cursor="hand2",
+        )
+        close_btn.grid(row=0, column=1, sticky="e")
+
+        actions = [
+            ("테마 전환", self._toggle_theme),
+            ("기록 창 토글", self._toggle_log),
+            ("업데이트 확인", self._check_latest_release),
+            ("입력 초기화", self._reset_inputs),
+            ("GitHub 열기", self._open_github),
+        ]
+
+        for idx, (label, command) in enumerate(actions, start=1):
+            button = ttk.Button(
+                panel,
+                text=label,
+                style="SidebarPanel.TButton",
+                command=lambda cmd=command: self._run_sidebar_action(cmd),
+                cursor="hand2",
+            )
+            button.grid(row=idx, column=0, sticky="ew", pady=(0, 8))
+
+        panel.place_forget()
+        return panel
+
+    def _run_sidebar_action(self, action: Callable[[], None]):
+        action()
+        self._toggle_sidebar_panel()
 
     def _handle_calculate(self):
         if not (self.tables and self.inputs and self.log_panel):
