@@ -1,9 +1,22 @@
+"""사격 제원 계산을 위한 사거리표 로딩 및 보간 로직."""
+from __future__ import annotations
+
 import csv
 from bisect import bisect_left
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from afcs.equipment import Equipment
+
+
+@dataclass(frozen=True)
+class RangeRow:
+    range: float
+    mill: float
+    diff100m: float
+    eta: float
 
 
 class RangeTable:
@@ -15,29 +28,34 @@ class RangeTable:
         self.path = equipment.range_table_dir / f"{prefix}_rangeTable_{trajectory}_{charge}.csv"
         self.rows = self._load_rows()
 
-    def _load_rows(self):
-        with self.path.open("r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            rows = []
-            for line_no, row in enumerate(reader, start=1):
-                cleaned = {
-                    (key.strip() if key else ""): (value.strip() if value is not None else "")
-                    for key, value in row.items()
-                }
+    def _load_rows(self) -> list[RangeRow]:
+        return list(self._read_rows(self.path))
+
+    @staticmethod
+    @lru_cache(maxsize=64)
+    def _read_rows(path: Path) -> tuple[RangeRow, ...]:
+        rows: list[RangeRow] = []
+        with path.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f, skipinitialspace=True)
+            for row in reader:
                 try:
-                    r = float(cleaned.get("range", ""))
-                    mill = float(cleaned.get("mill", ""))
-                    diff100m = float(cleaned.get("diff100m", ""))
-                    eta = float(cleaned.get("eta", ""))
+                    rows.append(
+                        RangeRow(
+                            range=float(row.get("range", "")),
+                            mill=float(row.get("mill", "")),
+                            diff100m=float(row.get("diff100m", "")),
+                            eta=float(row.get("eta", "")),
+                        )
+                    )
                 except (ValueError, TypeError):
                     continue
-                rows.append({"range": r, "mill": mill, "diff100m": diff100m, "eta": eta})
-        return rows
+
+        return tuple(rows)
 
     def supports_range(self, distance: float) -> bool:
         if not self.rows:
             return False
-        distances = [row["range"] for row in self.rows]
+        distances = [row.range for row in self.rows]
         return min(distances) <= distance <= max(distances)
 
     def calculate(self, distance: float, altitude_delta: float):
@@ -59,30 +77,30 @@ class RangeTable:
             "diff100m": diff100m,
         }
 
-    def _neighbor_rows(self, distance: float):
-        ranges = [row["range"] for row in self.rows]
+    def _neighbor_rows(self, distance: float) -> Sequence[RangeRow]:
+        ranges = [row.range for row in self.rows]
         idx = bisect_left(ranges, distance)
 
-        neighbors = []
+        neighbors: list[RangeRow] = []
         if idx > 0:
             neighbors.append(self.rows[idx - 1])
         if idx < len(self.rows):
             neighbors.append(self.rows[idx])
 
-        remaining = []
+        remaining: list[RangeRow] = []
         if idx - 2 >= 0:
             remaining.append(self.rows[idx - 2])
         if idx + 1 < len(self.rows):
             remaining.append(self.rows[idx + 1])
 
-        remaining.sort(key=lambda r: abs(r["range"] - distance))
+        remaining.sort(key=lambda r: abs(r.range - distance))
         for row in remaining:
             if row not in neighbors:
                 neighbors.append(row)
             if len(neighbors) >= 3:
                 break
 
-        neighbors.sort(key=lambda r: r["range"])
+        neighbors.sort(key=lambda r: r.range)
         return neighbors
 
     def _interpolate(self, key: str, distance: float) -> float:
@@ -91,16 +109,16 @@ class RangeTable:
             raise ValueError("적절한 범위를 찾을 수 없습니다")
 
         if len(neighbors) == 1:
-            return neighbors[0][key]
-        if len(neighbors) == 2 or neighbors[0]["range"] == neighbors[1]["range"]:
+            return getattr(neighbors[0], key)
+        if len(neighbors) == 2 or neighbors[0].range == neighbors[1].range:
             lower, upper = neighbors[0], neighbors[1]
-            if upper["range"] == lower["range"]:
-                return lower[key]
-            ratio = (distance - lower["range"]) / (upper["range"] - lower["range"])
-            return lower[key] + ratio * (upper[key] - lower[key])
+            if upper.range == lower.range:
+                return getattr(lower, key)
+            ratio = (distance - lower.range) / (upper.range - lower.range)
+            return getattr(lower, key) + ratio * (getattr(upper, key) - getattr(lower, key))
 
-        x0, x1, x2 = (row["range"] for row in neighbors[:3])
-        y0, y1, y2 = (row[key] for row in neighbors[:3])
+        x0, x1, x2 = (row.range for row in neighbors[:3])
+        y0, y1, y2 = (getattr(row, key) for row in neighbors[:3])
 
         def basis(x, a, b):
             return (x - a) / (b - a) if b != a else 0.0
