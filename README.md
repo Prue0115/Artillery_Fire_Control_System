@@ -50,8 +50,8 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 <img width="1092" height="612" alt="image" src="https://github.com/user-attachments/assets/36aab6f0-13b2-4e2e-899d-03277b0189f8" />
 
 **지원하는 장비**
-- **M109A6 Paladin**
-- **M119 105mm Howitzer**
-- **M1129 Mortar Carrier**
-- **RM-70 MLRS**
-- **Siala 120mm Mortar**
+- **M109A6(숄레프, 팔라딘)**
+- **M119**
+- **M1129**
+- **RM-70**
+- **Siala**
