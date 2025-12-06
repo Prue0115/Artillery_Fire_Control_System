@@ -89,8 +89,12 @@ class AFCSApplication:
         self.root.after(500, self._check_latest_release)
 
     def _build_layout(self) -> None:
+        self.root.columnconfigure(0, weight=0, minsize=0)
+        self.root.columnconfigure(1, weight=1)
+        self.root.rowconfigure(0, weight=1)
+
         main = ttk.Frame(self.root, style="Main.TFrame", padding=20)
-        main.grid(row=0, column=0, sticky="nsew")
+        main.grid(row=0, column=1, sticky="nsew")
 
         shell = ttk.Frame(main, style="Main.TFrame")
         shell.grid(row=0, column=0, sticky="nsew")
@@ -105,10 +109,9 @@ class AFCSApplication:
         self.header = self._build_header(content)
         self.inputs = self._build_inputs(content)
         self.tables, self.delta_label = self._build_results(content)
-        self.theme_toggle, self.log_toggle_button = self._build_bottom_bar(content)
+        self._build_bottom_bar(content)
         self.log_panel = self._build_log_panel()
 
-        self.root.rowconfigure(0, weight=1)
         main.columnconfigure(0, weight=1)
         main.rowconfigure(0, weight=1)
         content.columnconfigure(0, weight=1)
@@ -229,32 +232,10 @@ class AFCSApplication:
         )
         return tables, delta_label
 
-    def _build_bottom_bar(self, parent: ttk.Frame) -> tuple[ttk.Button, ttk.Button]:
+    def _build_bottom_bar(self, parent: ttk.Frame) -> None:
         bottom_bar = ttk.Frame(parent, style="Main.TFrame")
         bottom_bar.grid(row=5, column=0, sticky="ew", pady=(8, 0))
         bottom_bar.columnconfigure(0, weight=1)
-
-        self._load_theme_icons()
-
-        theme_toggle = ttk.Button(
-            bottom_bar,
-            text="" if getattr(self.root, "light_icon_base", None) else "🌞",
-            style="ThemeToggle.TButton",
-            image=getattr(self.root, "light_icon_base", None),
-            cursor="hand2",
-            command=self._toggle_theme,
-        )
-        theme_toggle.grid(row=0, column=1, sticky="e", padx=(0, 8))
-
-        log_toggle_button = ttk.Button(
-            bottom_bar,
-            text="기록",
-            style="Secondary.TButton",
-            command=self._toggle_log,
-        )
-        log_toggle_button.grid(row=0, column=2, sticky="e")
-
-        return theme_toggle, log_toggle_button
 
     def _build_log_panel(self) -> LogPanel:
         log_frame = ttk.Labelframe(self.root, text="기록", style="Card.TLabelframe", padding=14)
@@ -396,10 +377,12 @@ class AFCSApplication:
         self.log_panel.visible = not self.log_panel.visible
         if self.log_panel.visible:
             self.log_panel.frame.grid()
-            self.log_toggle_button.configure(text="기록 닫기")
+            if self.log_toggle_button:
+                self.log_toggle_button.configure(text="기록 닫기")
         else:
             self.log_panel.frame.grid_remove()
-            self.log_toggle_button.configure(text="기록")
+            if self.log_toggle_button:
+                self.log_toggle_button.configure(text="기록")
         self._sync_layout()
 
     def _apply_toggle_icon(self, mode: str):
@@ -434,13 +417,15 @@ class AFCSApplication:
             return
 
         if self.sidebar_panel.winfo_ismapped():
-            self.sidebar_panel.place_forget()
+            self.sidebar_panel.grid_remove()
+            self.root.columnconfigure(0, minsize=0)
             return
 
         self.sidebar_panel.update_idletasks()
         width = max(self.sidebar_panel.winfo_reqwidth(), 220)
         self.sidebar_panel.configure(width=width)
-        self.sidebar_panel.place(x=0, y=0, relheight=1)
+        self.root.columnconfigure(0, minsize=width)
+        self.sidebar_panel.grid(row=0, column=0, sticky="nsw")
         self.sidebar_panel.lift()
 
     def _reset_inputs(self):
@@ -498,7 +483,8 @@ class AFCSApplication:
             )
             button.grid(row=idx, column=0, sticky="ew", pady=(0, 8))
 
-        panel.place_forget()
+        panel.grid(row=0, column=0, sticky="nsw")
+        panel.grid_remove()
         return panel
 
     def _run_sidebar_action(self, action: Callable[[], None]):
