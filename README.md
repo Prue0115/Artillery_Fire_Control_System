@@ -33,7 +33,7 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 6) GitHub Releases 기반 업데이트 확인
 프로그램 실행 시 자동으로 GitHub API를 조회하여 최신 버전이 있는지 확인합니다.
 사용자는 다음을 즉시 알 수 있습니다
-- 최신 릴리스 버전
+- **최신 릴리스 버전**
 - 다운로드 링크
 - 업데이트 필요 여부
 
@@ -42,7 +42,7 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 1. [릴리스 페이지](https://github.com/Prue0115/Artillery_Fire_Control_System/releases)
 2. AFCS.exe 실행하세요
 
-**사용 방법**
+**# 사용 방법**
 1. 프로그램을 실행하면 메인 화면이 표시됩니다.
 2. 장비 목록에서 사용할 장비를 선택합니다.
 3. My ALT(m) 사수고도, Target ALT(m) 목표의 고도, Distance (m) 사수-목표물 거리 입력을 합니다.
@@ -50,7 +50,7 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 5. 계산 결과는 장비 기준으로 자동 분류되어 기록(Log) 탭에 저장됩니다.
 <img width="1092" height="612" alt="image" src="https://github.com/user-attachments/assets/36aab6f0-13b2-4e2e-899d-03277b0189f8" />
 
-**지원하는 장비**
+**# 지원하는 장비**
 - **M109A6 Paladin**
 - **M119 105mm Howitzer**
 - **M1129 Mortar Carrier**
