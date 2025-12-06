@@ -49,6 +49,7 @@ AFCS는 라이트/다크 테마를 즉시 전환할 수 있습니다.
 5. 계산 결과는 장비 기준으로 자동 분류되어 기록(Log) 탭에 저장됩니다.
 <img width="1092" height="612" alt="image" src="https://github.com/user-attachments/assets/36aab6f0-13b2-4e2e-899d-03277b0189f8" />
 
+
 **지원하는 장비**
 - **M109A6(숄레프, 팔라딘)**
 - **M119**
