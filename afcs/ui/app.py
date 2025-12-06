@@ -467,7 +467,7 @@ class AFCSApplication:
         header.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         header.columnconfigure(0, weight=1)
 
-        ttk.Label(header, text="빠른 메뉴", style="SidebarTitle.TLabel").grid(
+        ttk.Label(header, text="메뉴", style="SidebarTitle.TLabel").grid(
             row=0, column=0, sticky="w"
         )
         close_btn = ttk.Button(
